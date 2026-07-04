@@ -1,12 +1,35 @@
 import { and, asc, eq, sql } from 'drizzle-orm'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import { DUE_BUCKETS } from './enums.ts'
-import type { Due, Priority } from './enums.ts'
+import type { Due, EnergyLevel, Priority } from './enums.ts'
 import { NotFoundError } from './errors.ts'
 import { newId } from './ids.ts'
-import { inboxItems, projects, type schema, taskSteps, taskTags, tasks } from './schema.ts'
-import type { InboxItem, Project, TaskStep, TaskWithDetail } from './types.ts'
-import type { CreateTaskInput, TriageInboxInput, UpdateTaskInput } from './validators.ts'
+import {
+  appState,
+  focusSessions,
+  inboxItems,
+  meetings,
+  projects,
+  type schema,
+  taskSteps,
+  taskTags,
+  tasks,
+} from './schema.ts'
+import type {
+  FocusSession,
+  InboxItem,
+  Meeting,
+  Project,
+  TaskStep,
+  TaskWithDetail,
+} from './types.ts'
+import type {
+  CreateTaskInput,
+  FinishFocusInput,
+  StartFocusInput,
+  TriageInboxInput,
+  UpdateTaskInput,
+} from './validators.ts'
 
 /** The Drizzle database handle the services operate on. */
 export type BeaconDb = BetterSQLite3Database<typeof schema>
@@ -21,11 +44,52 @@ export type TaskGroup = {
 
 const iso = () => new Date().toISOString()
 
+/** Local calendar date (YYYY-MM-DD) for a Date — the unit streaks count in. */
+function localDate(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+/** N days before the given local date, as YYYY-MM-DD. */
+function shiftDate(base: Date, deltaDays: number): string {
+  const d = new Date(base)
+  d.setDate(d.getDate() + deltaDays)
+  return localDate(d)
+}
+
+/** Local time as "H:MM" (24-hour, no leading zero on hour) — matches the mock. */
+function formatTime(iso8601: string): string {
+  const d = new Date(iso8601)
+  return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
 /** Which group a due bucket falls into (upcoming = tomorrow + this week). */
 function groupKeyForDue(due: Due): TaskGroup['key'] {
   if (due === 'today') return 'today'
   if (due === 'someday') return 'someday'
   return 'upcoming'
+}
+
+/** The "right now" suggestion — one open Today task, project, and estimate. */
+export type RightNow = {
+  taskId: string
+  title: string
+  project: string | null
+  estMinutes: number | null
+}
+
+/** Everything the Overview screen and the MCP `get_overview` tool return. */
+export type Overview = {
+  today: { open: number; done: number; total: number; pct: number }
+  rightNow: RightNow | null
+  nudge: string
+  energy: EnergyLevel | null
+  streak: number
+  week: { date: string; active: boolean }[]
+  nextMeeting: { time: string; title: string; who: string } | null
+  inboxCount: number
 }
 
 /**
@@ -257,6 +321,179 @@ export function createService(db: BeaconDb) {
             .run()
         })
       })
+    },
+
+    // --- App state (energy, rollover marker) -------------------------------
+    getState(key: string): string | null {
+      return db.select().from(appState).where(eq(appState.key, key)).get()?.value ?? null
+    },
+
+    setState(key: string, value: string | null): void {
+      db.insert(appState)
+        .values({ key, value })
+        .onConflictDoUpdate({ target: appState.key, set: { value } })
+        .run()
+    },
+
+    getEnergy(): EnergyLevel | null {
+      const v = this.getState('energy')
+      return v === 'low' || v === 'medium' || v === 'high' ? v : null
+    },
+
+    setEnergy(level: EnergyLevel): void {
+      this.setState('energy', level)
+    },
+
+    // --- Focus sessions ----------------------------------------------------
+    startFocus(input: StartFocusInput): FocusSession {
+      let taskTitle = 'Deep work'
+      if (input.taskId) {
+        const task = db.select().from(tasks).where(eq(tasks.id, input.taskId)).get()
+        if (!task) throw new NotFoundError('task', input.taskId)
+        taskTitle = task.title
+      }
+      const row = {
+        id: newId(),
+        taskId: input.taskId ?? null,
+        taskTitle,
+        plannedMinutes: input.minutes ?? 25,
+        actualSeconds: 0,
+        startedAt: iso(),
+        endedAt: null,
+        completed: false,
+      }
+      db.insert(focusSessions).values(row).run()
+      return row
+    },
+
+    finishFocus(sessionId: string, input: FinishFocusInput): FocusSession {
+      const session = db.select().from(focusSessions).where(eq(focusSessions.id, sessionId)).get()
+      if (!session) throw new NotFoundError('focus session', sessionId)
+      const endedAt = iso()
+      const actualSeconds =
+        input.actualSeconds ??
+        Math.max(0, Math.round((Date.parse(endedAt) - Date.parse(session.startedAt)) / 1000))
+      db.update(focusSessions)
+        .set({ completed: input.completed, endedAt, actualSeconds })
+        .where(eq(focusSessions.id, sessionId))
+        .run()
+      if (input.markTaskDone && session.taskId) {
+        db.update(tasks)
+          .set({ done: true, doneAt: endedAt, updatedAt: endedAt })
+          .where(eq(tasks.id, session.taskId))
+          .run()
+      }
+      return { ...session, completed: input.completed, endedAt, actualSeconds }
+    },
+
+    // --- Daily rollover ----------------------------------------------------
+    /**
+     * Runs once per local day on first read. Promotes 'tomorrow' tasks into
+     * 'today' (the horizon has arrived). Routine check-state resets for free —
+     * checks are keyed by date, so a new day simply has none. Streaks are
+     * derived, so nothing to persist there. No overdue/red states (principle 7).
+     */
+    runDailyRollover(): { rolled: boolean } {
+      const today = localDate(new Date())
+      const last = this.getState('last_rollover_date')
+      if (last === today) return { rolled: false }
+      if (last !== null) {
+        db.update(tasks)
+          .set({ due: 'today', updatedAt: iso() })
+          .where(eq(tasks.due, 'tomorrow'))
+          .run()
+      }
+      this.setState('last_rollover_date', today)
+      return { rolled: last !== null }
+    },
+
+    // --- Overview & streak -------------------------------------------------
+    getOverview(): Overview {
+      const now = new Date()
+      const todayAll = db.select().from(tasks).where(eq(tasks.due, 'today')).all()
+      const doneToday = todayAll.filter((t) => t.done).length
+      const total = todayAll.length
+      const open = total - doneToday
+      const pct = total > 0 ? Math.round((doneToday / total) * 100) : 0
+
+      const energy = this.getEnergy()
+      const openToday = db
+        .select()
+        .from(tasks)
+        .where(and(eq(tasks.due, 'today'), eq(tasks.done, false)))
+        .orderBy(asc(tasks.sortOrder))
+        .all()
+      // Low energy → suggest the shortest-estimate task; otherwise the top task.
+      let pick = openToday[0]
+      if (energy === 'low' && openToday.length > 0) {
+        pick = [...openToday].sort(
+          (a, b) =>
+            (a.estMinutes ?? Number.POSITIVE_INFINITY) - (b.estMinutes ?? Number.POSITIVE_INFINITY),
+        )[0]
+      }
+      let rightNow: RightNow | null = null
+      if (pick) {
+        const project = pick.projectId
+          ? (db.select().from(projects).where(eq(projects.id, pick.projectId)).get()?.name ?? null)
+          : null
+        rightNow = { taskId: pick.id, title: pick.title, project, estMinutes: pick.estMinutes }
+      }
+
+      const nudge = rightNow
+        ? `You have ${open} ${open === 1 ? 'thing' : 'things'} left today. That's enough. Start with this one and ignore the rest for now.`
+        : 'Everything for today is handled. Capture any loose thoughts up top, or take the win and step away.'
+
+      // Streak: local dates with a completed task or a completed focus session.
+      const active = new Set<string>()
+      for (const t of db.select().from(tasks).where(eq(tasks.done, true)).all()) {
+        if (t.doneAt) active.add(localDate(new Date(t.doneAt)))
+      }
+      for (const f of db
+        .select()
+        .from(focusSessions)
+        .where(eq(focusSessions.completed, true))
+        .all()) {
+        active.add(localDate(new Date(f.endedAt ?? f.startedAt)))
+      }
+      const week = Array.from({ length: 7 }, (_, i) => {
+        const date = shiftDate(now, i - 6)
+        return { date, active: active.has(date) }
+      })
+      // Count consecutive active days ending today (or yesterday — be kind).
+      let streak = 0
+      let cursor = active.has(localDate(now)) ? 0 : active.has(shiftDate(now, -1)) ? -1 : null
+      while (cursor !== null && active.has(shiftDate(now, cursor))) {
+        streak += 1
+        cursor -= 1
+      }
+
+      const nowIso = iso()
+      const upcoming = db
+        .select()
+        .from(meetings)
+        .orderBy(asc(meetings.startsAt))
+        .all()
+        .find((m) => m.startsAt >= nowIso)
+      const nextMeeting = upcoming
+        ? { time: formatTime(upcoming.startsAt), title: upcoming.title, who: upcoming.who }
+        : null
+
+      const inboxCount = db.select({ n: sql<number>`count(*)` }).from(inboxItems).get()?.n ?? 0
+
+      return {
+        today: { open, done: doneToday, total, pct },
+        rightNow,
+        nudge,
+        energy,
+        streak,
+        week,
+        nextMeeting,
+        inboxCount,
+      }
+    },
+
+    listMeetings(): Meeting[] {
+      return db.select().from(meetings).orderBy(asc(meetings.startsAt)).all()
     },
 
     // --- Projects (read; full CRUD in Phase 4) -----------------------------

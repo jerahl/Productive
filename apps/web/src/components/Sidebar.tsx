@@ -1,3 +1,4 @@
+import { useFocus } from '../focus/FocusContext.tsx'
 import { MONO } from '../lib/format.ts'
 
 export type ViewId =
@@ -32,6 +33,7 @@ type Props = {
 }
 
 export function Sidebar({ active, onNavigate, tasksBadge }: Props) {
+  const focus = useFocus()
   return (
     <aside
       className="sidebar"
@@ -147,7 +149,7 @@ export function Sidebar({ active, onNavigate, tasksBadge }: Props) {
         }}
       >
         <div
-          title="Focus sessions arrive in Phase 2"
+          onClick={() => focus.open()}
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -159,8 +161,7 @@ export function Sidebar({ active, onNavigate, tasksBadge }: Props) {
             color: '#bcc6ff',
             fontWeight: 600,
             fontSize: 13,
-            cursor: 'not-allowed',
-            opacity: 0.7,
+            cursor: 'pointer',
           }}
         >
           Start a focus session

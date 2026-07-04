@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { Header } from './components/Header.tsx'
+import { OverviewView } from './components/OverviewView.tsx'
 import { Placeholder } from './components/Placeholder.tsx'
 import { NAV, Sidebar, type ViewId } from './components/Sidebar.tsx'
 import { TasksView } from './components/TasksView.tsx'
+import { FocusProvider } from './focus/FocusContext.tsx'
 import { useTasks } from './lib/queries.ts'
 
-export function App() {
-  const [active, setActive] = useState<ViewId>('tasks')
+function Main() {
+  const [active, setActive] = useState<ViewId>('overview')
   const tasksQ = useTasks()
 
   const todayOpen = tasksQ.data?.groups.find((g) => g.key === 'today')?.openCount ?? 0
@@ -23,9 +25,23 @@ export function App() {
       >
         <Header />
         <div className="main-pad" style={{ flex: 1, overflowY: 'auto', padding: '26px 28px 64px' }}>
-          {active === 'tasks' ? <TasksView /> : <Placeholder view={active} label={label} />}
+          {active === 'overview' ? (
+            <OverviewView />
+          ) : active === 'tasks' ? (
+            <TasksView />
+          ) : (
+            <Placeholder view={active} label={label} />
+          )}
         </div>
       </main>
     </div>
+  )
+}
+
+export function App() {
+  return (
+    <FocusProvider>
+      <Main />
+    </FocusProvider>
   )
 }

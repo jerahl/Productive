@@ -4,6 +4,9 @@ import {
   addStepsInput,
   captureThoughtInput,
   createTaskInput,
+  finishFocusInput,
+  setEnergyInput,
+  startFocusInput,
   triageInboxInput,
   updateTaskInput,
 } from '@beacon/core'
@@ -48,8 +51,35 @@ export function createApp(svc: BeaconService) {
     return c.body(null, 204)
   })
 
+  // --- Overview, energy, focus --------------------------------------------
+  app.get('/api/overview', (c) => {
+    svc.runDailyRollover()
+    return c.json(svc.getOverview())
+  })
+
+  app.post('/api/energy', async (c) => {
+    const { level } = setEnergyInput.parse(await c.req.json())
+    svc.setEnergy(level)
+    return c.json(svc.getOverview())
+  })
+
+  app.post('/api/focus/start', async (c) => {
+    const body = startFocusInput.parse(await c.req.json().catch(() => ({})))
+    return c.json(svc.startFocus(body), 201)
+  })
+
+  app.post('/api/focus/:id/finish', async (c) => {
+    const body = finishFocusInput.parse(await c.req.json())
+    return c.json(svc.finishFocus(c.req.param('id'), body))
+  })
+
+  app.get('/api/meetings', (c) => c.json(svc.listMeetings()))
+
   // --- Tasks ---------------------------------------------------------------
-  app.get('/api/tasks', (c) => c.json({ groups: svc.listTaskGroups() }))
+  app.get('/api/tasks', (c) => {
+    svc.runDailyRollover()
+    return c.json({ groups: svc.listTaskGroups() })
+  })
 
   app.post('/api/tasks', async (c) => {
     const body = createTaskInput.parse(await c.req.json())

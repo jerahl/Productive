@@ -70,6 +70,7 @@ export const startFocusInput = z.object({
 export const finishFocusInput = z.object({
   completed: z.boolean(),
   markTaskDone: z.boolean().optional(),
+  actualSeconds: z.number().int().nonnegative().optional(),
 })
 
 export const setEnergyInput = z.object({

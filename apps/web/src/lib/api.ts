@@ -1,4 +1,13 @@
-import type { GroupKey, InboxItem, Project, Task, TaskGroup } from './types.ts'
+import type {
+  EnergyLevel,
+  FocusSession,
+  GroupKey,
+  InboxItem,
+  Overview,
+  Project,
+  Task,
+  TaskGroup,
+} from './types.ts'
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`/api${path}`, {
@@ -19,6 +28,15 @@ export const api = {
   getTasks: () => req<{ groups: TaskGroup[] }>('/tasks'),
   getInbox: () => req<InboxItem[]>('/inbox'),
   getProjects: () => req<Project[]>('/projects'),
+  getOverview: () => req<Overview>('/overview'),
+
+  setEnergy: (level: EnergyLevel) => req<Overview>('/energy', body({ level })),
+  startFocus: (data: { taskId?: string; minutes?: number } = {}) =>
+    req<FocusSession>('/focus/start', body(data)),
+  finishFocus: (
+    id: string,
+    data: { completed: boolean; actualSeconds?: number; markTaskDone?: boolean },
+  ) => req<FocusSession>(`/focus/${id}/finish`, body(data)),
 
   capture: (text: string) => req<InboxItem>('/capture', body({ text })),
   triage: (id: string, data: { due?: string; projectId?: string } = {}) =>

@@ -48,3 +48,34 @@ export type Project = {
   archived: boolean
   createdAt: string
 }
+
+export type EnergyLevel = 'low' | 'medium' | 'high'
+
+export type RightNow = {
+  taskId: string
+  title: string
+  project: string | null
+  estMinutes: number | null
+}
+
+export type Overview = {
+  today: { open: number; done: number; total: number; pct: number }
+  rightNow: RightNow | null
+  nudge: string
+  energy: EnergyLevel | null
+  streak: number
+  week: { date: string; active: boolean }[]
+  nextMeeting: { time: string; title: string; who: string } | null
+  inboxCount: number
+}
+
+export type FocusSession = {
+  id: string
+  taskId: string | null
+  taskTitle: string
+  plannedMinutes: number
+  actualSeconds: number
+  startedAt: string
+  endedAt: string | null
+  completed: boolean
+}

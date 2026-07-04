@@ -6,13 +6,20 @@ visible. Claude connects directly through a built-in MCP server and can triage t
 inbox, break tasks into tiny steps, start focus sessions, and run reviews while the
 UI updates live.
 
-**Status: Phase 1 — core loop.** The pnpm monorepo, shared `@beacon/core` domain
-(Drizzle schema + zod validators + service layer), SQLite migrations, and a demo
-seed are in place, plus the full core loop: a Hono REST API and a React web
-client with the persistent shell (sidebar, header, brain-dump capture bar) and a
-Tasks view pixel-matched to the mock — inbox triage, Today/Upcoming/Someday
-groups, steps, due/priority cycling, and drag-to-reorder. The MCP server and the
-remaining views land in later phases (see the roadmap in `docs/PLAN.md §7`).
+**Status: Phase 2 — focus & overview.** The pnpm monorepo, shared `@beacon/core`
+domain (Drizzle schema + zod validators + service layer), SQLite migrations, and
+a demo seed are in place, plus the core loop and the focus/overview layer:
+
+- **Tasks** view pixel-matched to the mock — inbox triage, Today/Upcoming/Someday
+  groups, steps, due/priority cycling, drag-to-reorder.
+- **Overview** — "right now — just one thing", today progress, energy selector
+  (low energy → suggests the shortest task), momentum/streak, next meeting,
+  brain-dump inbox.
+- **Focus session** — full-screen overlay with a countdown, pause/resume, +5 min,
+  and Done; sessions are logged (planned vs. actual), and a daily rollover
+  promotes `tomorrow` → `today` while streaks recompute from completions.
+
+The MCP server and the remaining views land in later phases (see `docs/PLAN.md §7`).
 
 ## Repository layout
 

@@ -1,22 +1,36 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from './api.ts'
-import type { GroupKey } from './types.ts'
+import type { EnergyLevel, GroupKey } from './types.ts'
 
 const TASKS = ['tasks'] as const
 const INBOX = ['inbox'] as const
 const PROJECTS = ['projects'] as const
+const OVERVIEW = ['overview'] as const
 
 export const useTasks = () => useQuery({ queryKey: TASKS, queryFn: api.getTasks })
 export const useInbox = () => useQuery({ queryKey: INBOX, queryFn: api.getInbox })
 export const useProjects = () => useQuery({ queryKey: PROJECTS, queryFn: api.getProjects })
+export const useOverview = () => useQuery({ queryKey: OVERVIEW, queryFn: api.getOverview })
 
-/** Invalidate the caches a mutation can affect (tasks + inbox move together). */
+/** Invalidate the caches a mutation can affect (tasks, inbox, and overview
+ *  derive from the same data, so refresh all three together). */
 function useInvalidate() {
   const qc = useQueryClient()
   return () => {
     qc.invalidateQueries({ queryKey: TASKS })
     qc.invalidateQueries({ queryKey: INBOX })
+    qc.invalidateQueries({ queryKey: OVERVIEW })
   }
+}
+
+export function useSetEnergy() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (level: EnergyLevel) => api.setEnergy(level),
+    onSuccess: (overview) => {
+      qc.setQueryData(OVERVIEW, overview)
+    },
+  })
 }
 
 export function useCapture() {

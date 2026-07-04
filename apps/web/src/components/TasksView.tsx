@@ -1,4 +1,5 @@
 import { type MouseEvent, useState } from 'react'
+import { useFocus } from '../focus/FocusContext.tsx'
 import { MONO } from '../lib/format.ts'
 import {
   useAddStep,
@@ -29,6 +30,7 @@ export function TasksView() {
   const triage = useTriage()
   const dismiss = useDismiss()
   const reorder = useReorder()
+  const focus = useFocus()
 
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [override, setOverride] = useState<{ group: GroupKey; ids: string[] } | null>(null)
@@ -122,6 +124,7 @@ export function TasksView() {
       onAddStep={(text) => addStep.mutate({ id: task.id, text })}
       onToggleStep={(sid) => toggleStep.mutate({ id: task.id, sid })}
       onStartReorder={(e) => startReorder(group, task.id, e)}
+      onStartFocus={() => focus.open({ taskId: task.id })}
     />
   )
 

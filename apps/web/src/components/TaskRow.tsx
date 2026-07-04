@@ -12,6 +12,7 @@ type Props = {
   onAddStep: (text: string) => void
   onToggleStep: (stepId: string) => void
   onStartReorder: (e: MouseEvent) => void
+  onStartFocus: () => void
 }
 
 export function TaskRow({
@@ -24,6 +25,7 @@ export function TaskRow({
   onAddStep,
   onToggleStep,
   onStartReorder,
+  onStartFocus,
 }: Props) {
   const [stepDraft, setStepDraft] = useState('')
   const due = DUE_META[task.due]
@@ -186,7 +188,11 @@ export function TaskRow({
           </span>
           {!task.done && (
             <div
-              title="Focus sessions arrive in Phase 2"
+              onClick={(e) => {
+                e.stopPropagation()
+                onStartFocus()
+              }}
+              title="Start a focus session"
               style={{
                 flex: 'none',
                 width: 24,
@@ -199,7 +205,7 @@ export function TaskRow({
                 color: '#9fb0ff',
                 fontSize: 9,
                 paddingLeft: 2,
-                opacity: 0.6,
+                cursor: 'pointer',
               }}
             >
               ▶
