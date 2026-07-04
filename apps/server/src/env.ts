@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 /**
  * Resolve the SQLite file path. Defaults to ~/.beacon/beacon.db; override with
@@ -15,9 +16,10 @@ export function resolveDbPath(): string {
   return dbPath
 }
 
-/** Directory holding the generated migration SQL, resolved relative to this file. */
+/** Directory holding the generated migration SQL, resolved relative to this file.
+ *  Uses fileURLToPath so it resolves correctly on Windows (drive letters) too. */
 export function migrationsDir(): string {
-  return join(dirname(new URL(import.meta.url).pathname), '..', 'drizzle')
+  return join(dirname(fileURLToPath(import.meta.url)), '..', 'drizzle')
 }
 
 /** Vision-board uploads live beside the database (docs/PLAN.md §5). */
