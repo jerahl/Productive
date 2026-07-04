@@ -1,34 +1,51 @@
 import { and, asc, eq, sql } from 'drizzle-orm'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import { DUE_BUCKETS } from './enums.ts'
-import type { Due, EnergyLevel, Priority } from './enums.ts'
+import type { Due, EnergyLevel, Priority, RoutinePeriod } from './enums.ts'
 import { NotFoundError } from './errors.ts'
 import type { BeaconTopic, Emit } from './events.ts'
 import { newId } from './ids.ts'
 import {
   appState,
+  docs,
   focusSessions,
+  goals,
   inboxItems,
   meetings,
+  notes,
   projects,
+  routineChecks,
+  routines,
   type schema,
   taskSteps,
   taskTags,
   tasks,
 } from './schema.ts'
 import type {
+  Doc,
   FocusSession,
+  Goal,
   InboxItem,
   Meeting,
+  Note,
   Project,
   TaskStep,
   TaskWithDetail,
 } from './types.ts'
 import type {
+  CreateDocInput,
+  CreateGoalInput,
+  CreateMeetingInput,
+  CreateNoteInput,
+  CreateProjectInput,
   CreateTaskInput,
   FinishFocusInput,
   StartFocusInput,
   TriageInboxInput,
+  UpdateDocInput,
+  UpdateGoalInput,
+  UpdateNoteInput,
+  UpdateProjectInput,
   UpdateTaskInput,
 } from './validators.ts'
 
@@ -71,6 +88,20 @@ function groupKeyForDue(due: Due): TaskGroup['key'] {
   if (due === 'today') return 'today'
   if (due === 'someday') return 'someday'
   return 'upcoming'
+}
+
+/** A project with its computed completion stats (never stored redundantly). */
+export type ProjectWithStats = Project & { done: number; total: number; pct: number }
+
+/** Doc metadata (no body) for the list view. */
+export type DocMeta = Omit<Doc, 'bodyMd'>
+
+/** One routine period with today's check-state resolved and progress computed. */
+export type RoutineView = {
+  period: RoutinePeriod
+  done: number
+  total: number
+  items: { id: string; text: string; done: boolean }[]
 }
 
 /** The "right now" suggestion — one open Today task, project, and estimate. */
@@ -477,6 +508,11 @@ export function createService(db: BeaconDb, emit: Emit = () => {}) {
         .all()) {
         active.add(localDate(new Date(f.endedAt ?? f.startedAt)))
       }
+      // Routine completions also feed the streak (docs/PLAN.md §2.7); the date
+      // column is already a local YYYY-MM-DD.
+      for (const rc of db.select().from(routineChecks).where(eq(routineChecks.done, true)).all()) {
+        active.add(rc.date)
+      }
       const week = Array.from({ length: 7 }, (_, i) => {
         const date = shiftDate(now, i - 6)
         return { date, active: active.has(date) }
@@ -514,24 +550,221 @@ export function createService(db: BeaconDb, emit: Emit = () => {}) {
       }
     },
 
-    listMeetings(): Meeting[] {
-      return db.select().from(meetings).orderBy(asc(meetings.startsAt)).all()
-    },
-
     deleteTask(id: string): void {
       const res = db.delete(tasks).where(eq(tasks.id, id)).run()
       if (res.changes === 0) throw new NotFoundError('task', id)
       fire('tasks', 'overview')
     },
 
-    // --- Projects (read; full CRUD in Phase 4) -----------------------------
-    listProjects(): Project[] {
-      return db
+    // --- Projects ----------------------------------------------------------
+    listProjects(): ProjectWithStats[] {
+      const rows = db
         .select()
         .from(projects)
         .where(eq(projects.archived, false))
         .orderBy(asc(projects.createdAt))
         .all()
+      const counts = db
+        .select({
+          projectId: tasks.projectId,
+          total: sql<number>`count(*)`,
+          done: sql<number>`sum(case when ${tasks.done} then 1 else 0 end)`,
+        })
+        .from(tasks)
+        .groupBy(tasks.projectId)
+        .all()
+      const byId = new Map(counts.map((c) => [c.projectId, c]))
+      return rows.map((p) => {
+        const c = byId.get(p.id)
+        const total = c?.total ?? 0
+        const done = Number(c?.done ?? 0)
+        return { ...p, done, total, pct: total > 0 ? Math.round((done / total) * 100) : 0 }
+      })
+    },
+
+    createProject(input: CreateProjectInput): Project {
+      const row = {
+        id: newId(),
+        name: input.name,
+        color: input.color,
+        dueLabel: input.dueLabel ?? '',
+        archived: false,
+        createdAt: iso(),
+      }
+      db.insert(projects).values(row).run()
+      fire('projects')
+      return row
+    },
+
+    updateProject(id: string, patch: UpdateProjectInput): Project {
+      const existing = db.select().from(projects).where(eq(projects.id, id)).get()
+      if (!existing) throw new NotFoundError('project', id)
+      db.update(projects).set(patch).where(eq(projects.id, id)).run()
+      fire('projects', 'tasks')
+      return { ...existing, ...patch }
+    },
+
+    // --- Goals -------------------------------------------------------------
+    listGoals(): Goal[] {
+      return db.select().from(goals).orderBy(asc(goals.createdAt)).all()
+    },
+
+    createGoal(input: CreateGoalInput): Goal {
+      const row = {
+        id: newId(),
+        name: input.name,
+        detail: input.detail ?? '',
+        pct: input.pct ?? 0,
+        createdAt: iso(),
+      }
+      db.insert(goals).values(row).run()
+      fire('goals')
+      return row
+    },
+
+    updateGoal(id: string, patch: UpdateGoalInput): Goal {
+      const existing = db.select().from(goals).where(eq(goals.id, id)).get()
+      if (!existing) throw new NotFoundError('goal', id)
+      db.update(goals).set(patch).where(eq(goals.id, id)).run()
+      fire('goals')
+      return { ...existing, ...patch }
+    },
+
+    // --- Routines (check-state is per-day; template persists) --------------
+    listRoutines(date = localDate(new Date())): RoutineView[] {
+      const rows = db.select().from(routines).orderBy(asc(routines.sortOrder)).all()
+      const checks = db.select().from(routineChecks).where(eq(routineChecks.date, date)).all()
+      const doneSet = new Set(checks.filter((c) => c.done).map((c) => c.routineId))
+      const periods: RoutinePeriod[] = ['morning', 'evening']
+      return periods.map((period) => {
+        const items = rows
+          .filter((r) => r.period === period)
+          .map((r) => ({ id: r.id, text: r.text, done: doneSet.has(r.id) }))
+        return { period, done: items.filter((i) => i.done).length, total: items.length, items }
+      })
+    },
+
+    toggleRoutineCheck(routineId: string, date = localDate(new Date())): RoutineView[] {
+      const routine = db.select().from(routines).where(eq(routines.id, routineId)).get()
+      if (!routine) throw new NotFoundError('routine', routineId)
+      const existing = db
+        .select()
+        .from(routineChecks)
+        .where(and(eq(routineChecks.routineId, routineId), eq(routineChecks.date, date)))
+        .get()
+      if (existing) {
+        db.update(routineChecks)
+          .set({ done: !existing.done })
+          .where(and(eq(routineChecks.routineId, routineId), eq(routineChecks.date, date)))
+          .run()
+      } else {
+        db.insert(routineChecks).values({ routineId, date, done: true }).run()
+      }
+      fire('routines', 'overview')
+      return this.listRoutines(date)
+    },
+
+    // --- Meetings ----------------------------------------------------------
+    listMeetings(): Meeting[] {
+      return db.select().from(meetings).orderBy(asc(meetings.startsAt)).all()
+    },
+
+    createMeeting(input: CreateMeetingInput): Meeting {
+      const row = {
+        id: newId(),
+        title: input.title,
+        startsAt: input.startsAt,
+        who: input.who ?? '',
+        createdAt: iso(),
+      }
+      db.insert(meetings).values(row).run()
+      fire('meetings', 'overview')
+      return row
+    },
+
+    deleteMeeting(id: string): void {
+      const res = db.delete(meetings).where(eq(meetings.id, id)).run()
+      if (res.changes === 0) throw new NotFoundError('meeting', id)
+      fire('meetings', 'overview')
+    },
+
+    // --- Docs (list = metadata; read = full body) --------------------------
+    listDocs(): DocMeta[] {
+      return db
+        .select({
+          id: docs.id,
+          title: docs.title,
+          tag: docs.tag,
+          createdAt: docs.createdAt,
+          updatedAt: docs.updatedAt,
+        })
+        .from(docs)
+        .orderBy(sql`${docs.updatedAt} desc`)
+        .all()
+    },
+
+    getDoc(id: string): Doc {
+      const doc = db.select().from(docs).where(eq(docs.id, id)).get()
+      if (!doc) throw new NotFoundError('doc', id)
+      return doc
+    },
+
+    createDoc(input: CreateDocInput): Doc {
+      const now = iso()
+      const row = {
+        id: newId(),
+        title: input.title,
+        tag: input.tag ?? '',
+        bodyMd: input.bodyMd ?? '',
+        createdAt: now,
+        updatedAt: now,
+      }
+      db.insert(docs).values(row).run()
+      fire('docs')
+      return row
+    },
+
+    updateDoc(id: string, patch: UpdateDocInput): Doc {
+      const existing = db.select().from(docs).where(eq(docs.id, id)).get()
+      if (!existing) throw new NotFoundError('doc', id)
+      const next = { ...patch, updatedAt: iso() }
+      db.update(docs).set(next).where(eq(docs.id, id)).run()
+      fire('docs')
+      return { ...existing, ...next }
+    },
+
+    // --- Notes -------------------------------------------------------------
+    listNotes(): Note[] {
+      return db.select().from(notes).orderBy(sql`${notes.updatedAt} desc`).all()
+    },
+
+    createNote(input: CreateNoteInput): Note {
+      const now = iso()
+      const row = {
+        id: newId(),
+        text: input.text,
+        color: input.color ?? null,
+        createdAt: now,
+        updatedAt: now,
+      }
+      db.insert(notes).values(row).run()
+      fire('notes')
+      return row
+    },
+
+    updateNote(id: string, patch: UpdateNoteInput): Note {
+      const existing = db.select().from(notes).where(eq(notes.id, id)).get()
+      if (!existing) throw new NotFoundError('note', id)
+      const next = { ...patch, updatedAt: iso() }
+      db.update(notes).set(next).where(eq(notes.id, id)).run()
+      fire('notes')
+      return { ...existing, ...next }
+    },
+
+    deleteNote(id: string): void {
+      const res = db.delete(notes).where(eq(notes.id, id)).run()
+      if (res.changes === 0) throw new NotFoundError('note', id)
+      fire('notes')
     },
   }
 }

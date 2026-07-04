@@ -49,6 +49,43 @@ export type Project = {
   createdAt: string
 }
 
+export type ProjectStats = Project & { done: number; total: number; pct: number }
+
+export type Goal = { id: string; name: string; detail: string; pct: number; createdAt: string }
+
+export type RoutinePeriod = 'morning' | 'evening'
+export type RoutineView = {
+  period: RoutinePeriod
+  done: number
+  total: number
+  items: { id: string; text: string; done: boolean }[]
+}
+
+export type Meeting = {
+  id: string
+  title: string
+  startsAt: string
+  who: string
+  createdAt: string
+}
+
+export type DocMeta = {
+  id: string
+  title: string
+  tag: string
+  createdAt: string
+  updatedAt: string
+}
+export type Doc = DocMeta & { bodyMd: string }
+
+export type Note = {
+  id: string
+  text: string
+  color: string | null
+  createdAt: string
+  updatedAt: string
+}
+
 export type EnergyLevel = 'low' | 'medium' | 'high'
 
 export type RightNow = {

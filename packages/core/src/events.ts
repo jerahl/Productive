@@ -1,7 +1,16 @@
 import type { FocusSession } from './types.ts'
 
 /** Query "topics" the UI (and MCP resources) can subscribe to for invalidation. */
-export type BeaconTopic = 'tasks' | 'inbox' | 'overview' | 'projects' | 'meetings'
+export type BeaconTopic =
+  | 'tasks'
+  | 'inbox'
+  | 'overview'
+  | 'projects'
+  | 'goals'
+  | 'routines'
+  | 'meetings'
+  | 'docs'
+  | 'notes'
 
 /**
  * Events emitted by the service layer after a mutation. The server fans these

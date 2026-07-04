@@ -11,6 +11,51 @@ export const useTasks = () => useQuery({ queryKey: TASKS, queryFn: api.getTasks 
 export const useInbox = () => useQuery({ queryKey: INBOX, queryFn: api.getInbox })
 export const useProjects = () => useQuery({ queryKey: PROJECTS, queryFn: api.getProjects })
 export const useOverview = () => useQuery({ queryKey: OVERVIEW, queryFn: api.getOverview })
+export const useGoals = () => useQuery({ queryKey: ['goals'], queryFn: api.getGoals })
+export const useRoutines = () => useQuery({ queryKey: ['routines'], queryFn: api.getRoutines })
+export const useMeetings = () => useQuery({ queryKey: ['meetings'], queryFn: api.getMeetings })
+export const useDocs = () => useQuery({ queryKey: ['docs'], queryFn: api.getDocs })
+export const useNotes = () => useQuery({ queryKey: ['notes'], queryFn: api.getNotes })
+export const useDoc = (id: string) =>
+  useQuery({ queryKey: ['doc', id], queryFn: () => api.getDoc(id) })
+
+/** Mutation that refreshes a single query key on success. */
+function useKeyMutation<A, R>(fn: (arg: A) => Promise<R>, key: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: () => qc.invalidateQueries({ queryKey: [key] }),
+  })
+}
+
+export const useCheckRoutine = () =>
+  useKeyMutation((id: string) => api.checkRoutine(id), 'routines')
+export const useCreateNote = () =>
+  useKeyMutation((data: { text: string; color?: string | null }) => api.createNote(data), 'notes')
+export const useUpdateNote = () =>
+  useKeyMutation(
+    (v: { id: string; text?: string; color?: string | null }) =>
+      api.updateNote(v.id, { text: v.text, color: v.color }),
+    'notes',
+  )
+export const useDeleteNote = () => useKeyMutation((id: string) => api.deleteNote(id), 'notes')
+export const useCreateDoc = () =>
+  useKeyMutation(
+    (data: { title: string; tag?: string; bodyMd?: string }) => api.createDoc(data),
+    'docs',
+  )
+export function useUpdateDoc() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (v: { id: string; title?: string; tag?: string; bodyMd?: string }) =>
+      api.updateDoc(v.id, { title: v.title, tag: v.tag, bodyMd: v.bodyMd }),
+    onSuccess: (doc) => {
+      // Refresh both the list and this doc's own cache so the editor sees it as saved.
+      qc.setQueryData(['doc', doc.id], doc)
+      qc.invalidateQueries({ queryKey: ['docs'] })
+    },
+  })
+}
 
 /** Invalidate the caches a mutation can affect (tasks, inbox, and overview
  *  derive from the same data, so refresh all three together). */

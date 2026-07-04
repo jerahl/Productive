@@ -1,10 +1,16 @@
 import type {
+  Doc,
+  DocMeta,
   EnergyLevel,
   FocusSession,
+  Goal,
   GroupKey,
   InboxItem,
+  Meeting,
+  Note,
   Overview,
-  Project,
+  ProjectStats,
+  RoutineView,
   Task,
   TaskGroup,
 } from './types.ts'
@@ -27,8 +33,24 @@ const body = (data: unknown) => ({ method: 'POST', body: JSON.stringify(data) })
 export const api = {
   getTasks: () => req<{ groups: TaskGroup[] }>('/tasks'),
   getInbox: () => req<InboxItem[]>('/inbox'),
-  getProjects: () => req<Project[]>('/projects'),
+  getProjects: () => req<ProjectStats[]>('/projects'),
   getOverview: () => req<Overview>('/overview'),
+  getGoals: () => req<Goal[]>('/goals'),
+  getRoutines: () => req<RoutineView[]>('/routines'),
+  getMeetings: () => req<Meeting[]>('/meetings'),
+  getDocs: () => req<DocMeta[]>('/docs'),
+  getDoc: (id: string) => req<Doc>(`/docs/${id}`),
+  getNotes: () => req<Note[]>('/notes'),
+
+  checkRoutine: (id: string) => req<RoutineView[]>(`/routines/${id}/check`, { method: 'POST' }),
+  createNote: (data: { text: string; color?: string | null }) => req<Note>('/notes', body(data)),
+  updateNote: (id: string, data: { text?: string; color?: string | null }) =>
+    req<Note>(`/notes/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteNote: (id: string) => req<void>(`/notes/${id}`, { method: 'DELETE' }),
+  createDoc: (data: { title: string; tag?: string; bodyMd?: string }) =>
+    req<Doc>('/docs', body(data)),
+  updateDoc: (id: string, data: { title?: string; tag?: string; bodyMd?: string }) =>
+    req<Doc>(`/docs/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
 
   setEnergy: (level: EnergyLevel) => req<Overview>('/energy', body({ level })),
   startFocus: (data: { taskId?: string; minutes?: number } = {}) =>

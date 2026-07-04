@@ -3,11 +3,20 @@ import {
   NotFoundError,
   addStepsInput,
   captureThoughtInput,
+  createDocInput,
+  createGoalInput,
+  createMeetingInput,
+  createNoteInput,
+  createProjectInput,
   createTaskInput,
   finishFocusInput,
   setEnergyInput,
   startFocusInput,
   triageInboxInput,
+  updateDocInput,
+  updateGoalInput,
+  updateNoteInput,
+  updateProjectInput,
   updateTaskInput,
 } from '@beacon/core'
 import { Hono } from 'hono'
@@ -132,8 +141,59 @@ export function createApp(svc: BeaconService, bus: Bus) {
     return c.json({ groups: svc.listTaskGroups() })
   })
 
-  // --- Projects (read) -----------------------------------------------------
+  // --- Projects ------------------------------------------------------------
   app.get('/api/projects', (c) => c.json(svc.listProjects()))
+  app.post('/api/projects', async (c) =>
+    c.json(svc.createProject(createProjectInput.parse(await c.req.json())), 201),
+  )
+  app.patch('/api/projects/:id', async (c) =>
+    c.json(svc.updateProject(c.req.param('id'), updateProjectInput.parse(await c.req.json()))),
+  )
+
+  // --- Goals ---------------------------------------------------------------
+  app.get('/api/goals', (c) => c.json(svc.listGoals()))
+  app.post('/api/goals', async (c) =>
+    c.json(svc.createGoal(createGoalInput.parse(await c.req.json())), 201),
+  )
+  app.patch('/api/goals/:id', async (c) =>
+    c.json(svc.updateGoal(c.req.param('id'), updateGoalInput.parse(await c.req.json()))),
+  )
+
+  // --- Routines ------------------------------------------------------------
+  app.get('/api/routines', (c) => c.json(svc.listRoutines()))
+  app.post('/api/routines/:id/check', (c) => c.json(svc.toggleRoutineCheck(c.req.param('id'))))
+
+  // --- Meetings ------------------------------------------------------------
+  app.post('/api/meetings', async (c) =>
+    c.json(svc.createMeeting(createMeetingInput.parse(await c.req.json())), 201),
+  )
+  app.delete('/api/meetings/:id', (c) => {
+    svc.deleteMeeting(c.req.param('id'))
+    return c.body(null, 204)
+  })
+
+  // --- Docs ----------------------------------------------------------------
+  app.get('/api/docs', (c) => c.json(svc.listDocs()))
+  app.get('/api/docs/:id', (c) => c.json(svc.getDoc(c.req.param('id'))))
+  app.post('/api/docs', async (c) =>
+    c.json(svc.createDoc(createDocInput.parse(await c.req.json())), 201),
+  )
+  app.patch('/api/docs/:id', async (c) =>
+    c.json(svc.updateDoc(c.req.param('id'), updateDocInput.parse(await c.req.json()))),
+  )
+
+  // --- Notes ---------------------------------------------------------------
+  app.get('/api/notes', (c) => c.json(svc.listNotes()))
+  app.post('/api/notes', async (c) =>
+    c.json(svc.createNote(createNoteInput.parse(await c.req.json())), 201),
+  )
+  app.patch('/api/notes/:id', async (c) =>
+    c.json(svc.updateNote(c.req.param('id'), updateNoteInput.parse(await c.req.json()))),
+  )
+  app.delete('/api/notes/:id', (c) => {
+    svc.deleteNote(c.req.param('id'))
+    return c.body(null, 204)
+  })
 
   // --- Errors --------------------------------------------------------------
   app.onError((err, c) => {

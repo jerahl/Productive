@@ -61,6 +61,46 @@ input::placeholder {
   animation: fadeup 0.28s ease;
 }
 
+/* Rendered markdown in the Docs editor preview (Tailwind's reset strips these). */
+.doc-preview h1 {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 4px 0 12px;
+}
+.doc-preview h2 {
+  font-size: 17px;
+  font-weight: 600;
+  margin: 18px 0 8px;
+}
+.doc-preview h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 14px 0 6px;
+  color: rgba(232, 234, 240, 0.8);
+}
+.doc-preview p {
+  margin: 0 0 10px;
+}
+.doc-preview ul {
+  margin: 0 0 10px;
+  padding-left: 22px;
+  list-style: disc;
+}
+.doc-preview li {
+  margin: 3px 0;
+}
+.doc-preview code {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.88em;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 1px 5px;
+  border-radius: 5px;
+}
+.doc-preview strong {
+  font-weight: 700;
+}
+
 /* Responsive: below ~860px the sidebar becomes a horizontal scrolling bar. */
 @media (max-width: 860px) {
   .shell {

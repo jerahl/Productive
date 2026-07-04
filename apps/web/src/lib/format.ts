@@ -3,7 +3,20 @@ import type { Due, Priority } from './types.ts'
 export const MONO = "'JetBrains Mono', ui-monospace, monospace"
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const DAYS_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+/** "Saturday, Jul 4" */
+export function dateLong(): string {
+  const now = new Date()
+  return `${DAYS_LONG[now.getDay()]}, ${MONTHS[now.getMonth()]} ${now.getDate()}`
+}
+
+/** Local time of an ISO timestamp as "H:MM" (24-hour), matching the mock. */
+export function meetingTime(iso: string): string {
+  const d = new Date(iso)
+  return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`
+}
 
 /** Time-of-day greeting, mirroring the mock's copy. */
 export function greeting(name?: string): string {
@@ -27,6 +40,28 @@ export function dateLine(): string {
   if (h12 === 0) h12 = 12
   const mm = String(now.getMinutes()).padStart(2, '0')
   return `${DAYS[now.getDay()]} · ${MONTHS[now.getMonth()]} ${now.getDate()} · ${h12}:${mm} ${ap}`
+}
+
+/** Kind, fuzzy relative time for note/doc timestamps. */
+export function relativeTime(iso: string): string {
+  const diffMs = Date.now() - Date.parse(iso)
+  const mins = Math.round(diffMs / 60_000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hours = Math.round(mins / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.round(hours / 24)
+  if (days === 1) return 'Yesterday'
+  if (days < 7) return `${days} days ago`
+  if (days < 14) return 'Last week'
+  return `${Math.round(days / 7)} weeks ago`
+}
+
+/** Expand a #rrggbb color to rgba() at the given alpha (falls back to white). */
+export function tint(hex: string | null, alpha: number): string {
+  if (!hex || !/^#[0-9a-fA-F]{6}$/.test(hex)) return `rgba(255,255,255,${alpha})`
+  const n = Number.parseInt(hex.slice(1), 16)
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`
 }
 
 export const PRIORITY_COLOR: Record<Priority, string> = {

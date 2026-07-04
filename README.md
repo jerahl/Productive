@@ -6,10 +6,12 @@ visible. Claude connects directly through a built-in MCP server and can triage t
 inbox, break tasks into tiny steps, start focus sessions, and run reviews while the
 UI updates live.
 
-**Status: Phase 3 — MCP server & live updates.** The pnpm monorepo, shared
-`@beacon/core` domain (Drizzle schema + zod validators + service layer), SQLite
-migrations, and a demo seed are in place, plus the core loop, the focus/overview
-layer, and a built-in MCP server:
+**Status: Phase 4 — surround views.** The pnpm monorepo, shared `@beacon/core`
+domain (Drizzle schema + zod validators + service layer), SQLite migrations, and
+a demo seed are in place, plus the core loop, the focus/overview layer, a
+built-in MCP server, and all the surrounding views — Projects, Goals, Meetings,
+Routines (with a daily check-state reset), Notes (create/edit/delete), and Docs
+(list + a markdown editor):
 
 - **Tasks** view pixel-matched to the mock — inbox triage, Today/Upcoming/Someday
   groups, steps, due/priority cycling, drag-to-reorder.
@@ -24,8 +26,8 @@ layer, and a built-in MCP server:
   Changes stream to the browser over SSE (`/api/events`), so when Claude triages
   the inbox the open UI updates within a second.
 
-The remaining views (Projects, Docs, Notes, Canvas, Vision) land in Phases 4–5
-(see `docs/PLAN.md §7`).
+Canvas and the Vision board (plus the remaining surround MCP tools) land in
+Phase 5 (see `docs/PLAN.md §7`).
 
 ## Connecting Claude
 

@@ -106,6 +106,29 @@ export const createMeetingInput = z.object({
   who: z.string().optional(),
 })
 
+export const updateProjectInput = z
+  .object({
+    name: z.string().trim().min(1).max(200),
+    color: z.string().trim().min(1),
+    dueLabel: z.string(),
+    archived: z.boolean(),
+  })
+  .partial()
+
+export const updateGoalInput = z
+  .object({
+    name: z.string().trim().min(1).max(200),
+    detail: z.string(),
+    pct: z.number().int().min(0).max(100),
+  })
+  .partial()
+
+export const updateNoteInput = z
+  .object({ text: z.string().trim().min(1), color: z.string().nullable() })
+  .partial()
+
+export const updateDocInput = z.object({ title, tag: z.string(), bodyMd: z.string() }).partial()
+
 export type CaptureThoughtInput = z.infer<typeof captureThoughtInput>
 export type TriageInboxInput = z.infer<typeof triageInboxInput>
 export type CreateTaskInput = z.infer<typeof createTaskInput>
@@ -119,3 +142,7 @@ export type CreateGoalInput = z.infer<typeof createGoalInput>
 export type CreateNoteInput = z.infer<typeof createNoteInput>
 export type CreateDocInput = z.infer<typeof createDocInput>
 export type CreateMeetingInput = z.infer<typeof createMeetingInput>
+export type UpdateProjectInput = z.infer<typeof updateProjectInput>
+export type UpdateGoalInput = z.infer<typeof updateGoalInput>
+export type UpdateNoteInput = z.infer<typeof updateNoteInput>
+export type UpdateDocInput = z.infer<typeof updateDocInput>
