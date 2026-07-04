@@ -1,0 +1,27 @@
+{
+  "name": "@beacon/server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Beacon server: SQLite/Drizzle DB layer, migrations, and seed (REST + MCP land here in later phases).",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/migrate.ts",
+    "db:seed": "tsx src/seed.ts",
+    "db:studio": "drizzle-kit studio",
+    "db:reset": "tsx src/reset.ts"
+  },
+  "dependencies": {
+    "@beacon/core": "workspace:*",
+    "better-sqlite3": "^11.8.1",
+    "drizzle-orm": "^0.38.4"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/node": "^22.10.7",
+    "drizzle-kit": "^0.30.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  }
+}

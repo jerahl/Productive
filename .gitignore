@@ -1,0 +1,29 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# build output
+dist/
+build/
+*.tsbuildinfo
+
+# local database & uploads (Beacon stores at ~/.beacon by default; ignore any local copies)
+*.db
+*.db-shm
+*.db-wal
+.beacon/
+apps/server/uploads/
+
+# env & logs
+.env
+.env.*
+!.env.example
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# editor / OS
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json

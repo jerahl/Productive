@@ -6,8 +6,39 @@ visible. Claude connects directly through a built-in MCP server and can triage t
 inbox, break tasks into tiny steps, start focus sessions, and run reviews while the
 UI updates live.
 
-**Status: design & planning.** No application code yet — this repo currently holds
-the product plan and the reference design.
+**Status: Phase 0 — scaffold.** The pnpm monorepo, shared `@beacon/core` domain
+(Drizzle schema + zod validators + types), SQLite migrations, and a seed script
+that reproduces the reference mock's demo data are in place. The web client, REST
+API, and MCP server land in later phases (see the roadmap in `docs/PLAN.md §7`).
+
+## Repository layout
+
+```
+apps/
+  web/        React web client — scaffolded in Phase 1 (placeholder for now)
+  server/     SQLite/Drizzle DB layer, migrations, seed (REST + MCP in later phases)
+packages/
+  core/       shared enums, zod schemas, Drizzle tables, inferred types
+  mcp/        MCP tools/resources/prompts — implemented in Phase 3 (placeholder)
+```
+
+## Getting started
+
+Requires Node ≥ 22 and pnpm ≥ 10.
+
+```bash
+pnpm install          # install workspace deps (builds better-sqlite3 natively)
+pnpm db:generate      # regenerate Drizzle migration SQL from the schema
+pnpm db:migrate       # apply migrations to the SQLite file
+pnpm db:seed          # migrate (if needed) + load the demo data
+pnpm db:reset         # drop the db file, re-migrate, and re-seed from scratch
+
+pnpm typecheck        # tsc --noEmit across all packages
+pnpm lint             # biome check
+```
+
+The database lives at `~/.beacon/beacon.db` by default; set `BEACON_DB` to
+override (e.g. `BEACON_DB=./dev.db pnpm db:reset`).
 
 ## Documents
 

@@ -1,0 +1,7 @@
+{
+  "name": "@beacon/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Beacon web client — React 19 + Vite + Tailwind (scaffolded in Phase 1; see docs/PLAN.md §5)."
+}
