@@ -118,6 +118,12 @@ export type ProjectDetail = {
   tasks: TaskWithDetail[]
 }
 
+/** A goal with the counts of its linked tasks (progress % stays manual). */
+export type GoalWithStats = Goal & { taskDone: number; taskTotal: number }
+
+/** A goal opened up: its stats plus the (real) tasks linked to it. */
+export type GoalDetail = { goal: GoalWithStats; tasks: TaskWithDetail[] }
+
 /** The canvas: freeform cards plus the edges connecting them. */
 export type CanvasBoard = { cards: CanvasCard[]; edges: CanvasEdge[] }
 
@@ -716,8 +722,35 @@ export function createService(db: BeaconDb, emit: Emit = () => {}) {
     },
 
     // --- Goals -------------------------------------------------------------
-    listGoals(): Goal[] {
-      return db.select().from(goals).orderBy(asc(goals.createdAt)).all()
+    listGoals(): GoalWithStats[] {
+      const rows = db.select().from(goals).orderBy(asc(goals.createdAt)).all()
+      const counts = db
+        .select({
+          goalId: tasks.goalId,
+          total: sql<number>`count(*)`,
+          done: sql<number>`sum(case when ${tasks.done} then 1 else 0 end)`,
+        })
+        .from(tasks)
+        .groupBy(tasks.goalId)
+        .all()
+      const byId = new Map(counts.map((c) => [c.goalId, c]))
+      return rows.map((g) => {
+        const c = byId.get(g.id)
+        return { ...g, taskDone: Number(c?.done ?? 0), taskTotal: c?.total ?? 0 }
+      })
+    },
+
+    /** A goal opened up: its stats plus the (real) tasks linked to it. */
+    getGoalDetail(id: string): GoalDetail {
+      const goal = this.listGoals().find((g) => g.id === id)
+      if (!goal) throw new NotFoundError('goal', id)
+      const linked = db
+        .select()
+        .from(tasks)
+        .where(eq(tasks.goalId, id))
+        .orderBy(asc(tasks.sortOrder), asc(tasks.createdAt))
+        .all()
+      return { goal, tasks: linked.map((t) => taskDetail(t.id)) }
     },
 
     createGoal(input: CreateGoalInput): Goal {
@@ -739,6 +772,13 @@ export function createService(db: BeaconDb, emit: Emit = () => {}) {
       db.update(goals).set(patch).where(eq(goals.id, id)).run()
       fire('goals')
       return { ...existing, ...patch }
+    },
+
+    deleteGoal(id: string): void {
+      const res = db.delete(goals).where(eq(goals.id, id)).run()
+      if (res.changes === 0) throw new NotFoundError('goal', id)
+      // Linked tasks keep existing; their goal_id is cleared by the FK.
+      fire('goals', 'tasks')
     },
 
     // --- Routines (check-state is per-day; template persists) --------------

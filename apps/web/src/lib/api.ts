@@ -6,6 +6,7 @@ import type {
   EnergyLevel,
   FocusSession,
   Goal,
+  GoalDetail,
   GroupKey,
   InboxItem,
   Meeting,
@@ -47,6 +48,12 @@ export const api = {
   deleteMilestone: (id: string) => req<void>(`/milestones/${id}`, { method: 'DELETE' }),
   getOverview: () => req<Overview>('/overview'),
   getGoals: () => req<Goal[]>('/goals'),
+  getGoalDetail: (id: string) => req<GoalDetail>(`/goals/${id}/detail`),
+  createGoal: (data: { name: string; detail?: string; pct?: number }) =>
+    req<Goal>('/goals', body(data)),
+  updateGoal: (id: string, data: { name?: string; detail?: string; pct?: number }) =>
+    req<Goal>(`/goals/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteGoal: (id: string) => req<void>(`/goals/${id}`, { method: 'DELETE' }),
   getRoutines: () => req<RoutineView[]>('/routines'),
   getMeetings: () => req<Meeting[]>('/meetings'),
   getDocs: () => req<DocMeta[]>('/docs'),
@@ -105,6 +112,7 @@ export const api = {
     priority?: string
     projectId?: string
     milestoneId?: string
+    goalId?: string
     estMinutes?: number
   }) => req<Task>('/tasks', body(data)),
   updateTask: (

@@ -22,6 +22,33 @@ export const useCanvas = () => useQuery({ queryKey: ['canvas'], queryFn: api.get
 export const useVision = () => useQuery({ queryKey: ['vision'], queryFn: api.getVision })
 export const useProjectDetail = (id: string) =>
   useQuery({ queryKey: ['project', id], queryFn: () => api.getProjectDetail(id) })
+export const useGoalDetail = (id: string, enabled = true) =>
+  useQuery({ queryKey: ['goal', id], queryFn: () => api.getGoalDetail(id), enabled })
+
+/** Goal mutations refresh the goal list, any open goal detail, tasks, and overview. */
+function useGoalMutation<A, R>(fn: (arg: A) => Promise<R>) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: () => {
+      for (const key of ['goals', 'goal', 'tasks', 'overview']) {
+        qc.invalidateQueries({ queryKey: [key] })
+      }
+    },
+  })
+}
+
+export const useCreateGoal = () =>
+  useGoalMutation((data: { name: string; detail?: string; pct?: number }) => api.createGoal(data))
+export const useUpdateGoal = () =>
+  useGoalMutation((v: { id: string; name?: string; detail?: string; pct?: number }) =>
+    api.updateGoal(v.id, { name: v.name, detail: v.detail, pct: v.pct }),
+  )
+export const useDeleteGoal = () => useGoalMutation((id: string) => api.deleteGoal(id))
+export const useCreateGoalTask = () =>
+  useGoalMutation((v: { title: string; goalId: string }) =>
+    api.createTask({ title: v.title, goalId: v.goalId, due: 'today' }),
+  )
 
 /** Project-detail mutations refresh the detail, the project list, tasks, and overview. */
 function useProjectMutation<A, R>(fn: (arg: A) => Promise<R>) {

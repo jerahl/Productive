@@ -193,6 +193,11 @@ export function createApp(svc: BeaconService, bus: Bus) {
   app.patch('/api/goals/:id', async (c) =>
     c.json(svc.updateGoal(c.req.param('id'), updateGoalInput.parse(await c.req.json()))),
   )
+  app.get('/api/goals/:id/detail', (c) => c.json(svc.getGoalDetail(c.req.param('id'))))
+  app.delete('/api/goals/:id', (c) => {
+    svc.deleteGoal(c.req.param('id'))
+    return c.body(null, 204)
+  })
 
   // --- Routines ------------------------------------------------------------
   app.get('/api/routines', (c) => c.json(svc.listRoutines()))

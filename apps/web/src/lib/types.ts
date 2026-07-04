@@ -67,7 +67,16 @@ export type ProjectDetail = {
   tasks: Task[]
 }
 
-export type Goal = { id: string; name: string; detail: string; pct: number; createdAt: string }
+export type Goal = {
+  id: string
+  name: string
+  detail: string
+  pct: number
+  createdAt: string
+  taskDone: number
+  taskTotal: number
+}
+export type GoalDetail = { goal: Goal; tasks: Task[] }
 
 export type RoutinePeriod = 'morning' | 'evening'
 export type RoutineView = {

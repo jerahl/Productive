@@ -159,6 +159,7 @@ export function createBeaconMcpServer(svc: BeaconService): McpServer {
         estMinutes: z.number().int().nonnegative().optional(),
         projectId: z.string().optional(),
         milestoneId: z.string().optional(),
+        goalId: z.string().optional(),
         note: z.string().optional(),
         tags: z.array(z.string()).optional(),
         steps: z.array(z.string()).optional(),
@@ -187,6 +188,7 @@ export function createBeaconMcpServer(svc: BeaconService): McpServer {
         estMinutes: z.number().int().nonnegative().nullable().optional(),
         projectId: z.string().nullable().optional(),
         milestoneId: z.string().nullable().optional(),
+        goalId: z.string().nullable().optional(),
         note: z.string().optional(),
         done: z.boolean().optional(),
       },
@@ -497,6 +499,35 @@ function registerSurround(server: McpServer, svc: BeaconService): void {
       annotations: { idempotentHint: true },
     },
     async ({ goalId, ...patch }) => ok('Updated goal.', { goal: svc.updateGoal(goalId, patch) }),
+  )
+  server.registerTool(
+    'get_goal',
+    {
+      title: 'Get goal detail',
+      description: 'A goal with its linked-task counts and the tasks feeding it.',
+      inputSchema: { goalId: z.string() },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ goalId }) => {
+      const d = svc.getGoalDetail(goalId)
+      return ok(
+        `${d.goal.name}: ${d.goal.pct}% · ${d.goal.taskDone}/${d.goal.taskTotal} linked tasks done.`,
+        d as unknown as Record<string, unknown>,
+      )
+    },
+  )
+  server.registerTool(
+    'delete_goal',
+    {
+      title: 'Delete goal',
+      description: 'Delete a goal; linked tasks stay but lose the link.',
+      inputSchema: { goalId: z.string() },
+      annotations: { destructiveHint: true },
+    },
+    async ({ goalId }) => {
+      svc.deleteGoal(goalId)
+      return ok('Deleted goal.')
+    },
   )
 
   // Routines
