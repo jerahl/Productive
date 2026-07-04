@@ -6,19 +6,22 @@ visible. Claude connects directly through a built-in MCP server and can triage t
 inbox, break tasks into tiny steps, start focus sessions, and run reviews while the
 UI updates live.
 
-**Status: Phase 0 — scaffold.** The pnpm monorepo, shared `@beacon/core` domain
-(Drizzle schema + zod validators + types), SQLite migrations, and a seed script
-that reproduces the reference mock's demo data are in place. The web client, REST
-API, and MCP server land in later phases (see the roadmap in `docs/PLAN.md §7`).
+**Status: Phase 1 — core loop.** The pnpm monorepo, shared `@beacon/core` domain
+(Drizzle schema + zod validators + service layer), SQLite migrations, and a demo
+seed are in place, plus the full core loop: a Hono REST API and a React web
+client with the persistent shell (sidebar, header, brain-dump capture bar) and a
+Tasks view pixel-matched to the mock — inbox triage, Today/Upcoming/Someday
+groups, steps, due/priority cycling, and drag-to-reorder. The MCP server and the
+remaining views land in later phases (see the roadmap in `docs/PLAN.md §7`).
 
 ## Repository layout
 
 ```
 apps/
-  web/        React web client — scaffolded in Phase 1 (placeholder for now)
-  server/     SQLite/Drizzle DB layer, migrations, seed (REST + MCP in later phases)
+  web/        React 19 + Vite + Tailwind v4 + TanStack Query — shell + Tasks view
+  server/     Node + Hono REST API over the core service layer; SQLite/Drizzle, seed
 packages/
-  core/       shared enums, zod schemas, Drizzle tables, inferred types
+  core/       enums, zod schemas, Drizzle tables, inferred types, service layer
   mcp/        MCP tools/resources/prompts — implemented in Phase 3 (placeholder)
 ```
 
@@ -28,14 +31,18 @@ Requires Node ≥ 22 and pnpm ≥ 10.
 
 ```bash
 pnpm install          # install workspace deps (builds better-sqlite3 natively)
-pnpm db:generate      # regenerate Drizzle migration SQL from the schema
-pnpm db:migrate       # apply migrations to the SQLite file
-pnpm db:seed          # migrate (if needed) + load the demo data
-pnpm db:reset         # drop the db file, re-migrate, and re-seed from scratch
+pnpm db:reset         # drop the db file, re-migrate, and re-seed the demo data
+
+# run the app (two terminals, or background the server):
+pnpm --filter @beacon/server dev   # REST API on http://localhost:3000 (seeds if empty)
+pnpm --filter @beacon/web dev      # web client on http://localhost:5173 (proxies /api)
 
 pnpm typecheck        # tsc --noEmit across all packages
 pnpm lint             # biome check
 ```
+
+Other DB tasks: `pnpm db:generate` (regenerate migration SQL from the schema),
+`pnpm db:migrate` (apply migrations), `pnpm db:seed` (migrate + load demo data).
 
 The database lives at `~/.beacon/beacon.db` by default; set `BEACON_DB` to
 override (e.g. `BEACON_DB=./dev.db pnpm db:reset`).
