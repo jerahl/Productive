@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="border-bottom:1px solid rgba(255,255,255,0.05)">
+  <div style="display:flex;align-items:flex-start;gap:10px;padding:11px 2px">
+    <div onMouseDown="{{ task.startReorder }}" title="Drag to reorder" style-hover="color:rgba(232,234,240,0.6)" style="flex:none;cursor:grab;color:rgba(232,234,240,0.25);font-size:15px;line-height:22px;letter-spacing:-3px">&#10303;</div>
+    <sc-if value="{{ task.priHigh }}" hint-placeholder-val=""><div onClick="{{ task.cyclePriority }}" title="Priority: high" style="flex:none;width:9px;height:9px;border-radius:2px;margin-top:7px;cursor:pointer;background:#e07a8a"></div></sc-if>
+    <sc-if value="{{ task.priMed }}" hint-placeholder-val=""><div onClick="{{ task.cyclePriority }}" title="Priority: medium" style="flex:none;width:9px;height:9px;border-radius:2px;margin-top:7px;cursor:pointer;background:#e0a05a"></div></sc-if>
+    <sc-if value="{{ task.priLow }}" hint-placeholder-val="{{ true }}"><div onClick="{{ task.cyclePriority }}" title="Priority: low" style="flex:none;width:9px;height:9px;border-radius:2px;margin-top:7px;cursor:pointer;background:rgba(255,255,255,0.18)"></div></sc-if>
+    <sc-if value="{{ task.done }}" hint-placeholder-val=""><div onClick="{{ task.toggle }}" style="margin-top:1px;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none;font-size:11px;font-weight:700;background:#5ec98a;color:#0f1116;border:1.5px solid #5ec98a">&#10003;</div></sc-if>
+    <sc-if value="{{ task.open }}" hint-placeholder-val="{{ true }}"><div onClick="{{ task.toggle }}" style-hover="border-color:rgba(255,255,255,0.45)" style="margin-top:1px;width:20px;height:20px;border-radius:50%;cursor:pointer;flex:none;border:1.5px solid rgba(255,255,255,0.22);transition:border-color .15s"></div></sc-if>
+    <div style="flex:1;min-width:0">
+      <sc-if value="{{ task.done }}" hint-placeholder-val=""><div style="font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-decoration:line-through;color:rgba(232,234,240,0.38)">{{ task.title }}</div></sc-if>
+      <sc-if value="{{ task.open }}" hint-placeholder-val="{{ true }}"><div style="font-size:14px;letter-spacing:-0.005em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#e8eaf0">{{ task.title }}</div></sc-if>
+      <sc-if value="{{ task.hasNote }}" hint-placeholder-val=""><div style="font-size:12px;color:rgba(232,234,240,0.45);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ task.note }}</div></sc-if>
+      <sc-if value="{{ task.hasTags }}" hint-placeholder-val="">
+        <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
+          <sc-for list="{{ task.tags }}" as="tag" hint-placeholder-count="1">
+            <span style="font:500 10px 'JetBrains Mono';letter-spacing:0.02em;color:#9fb0ff;background:rgba(124,140,255,0.12);padding:2px 7px;border-radius:5px">{{ tag.label }}</span>
+          </sc-for>
+        </div>
+      </sc-if>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;flex:none;margin-top:1px">
+      <sc-if value="{{ task.showEst }}" hint-placeholder-val=""><span style="font:500 11px 'JetBrains Mono';color:rgba(232,234,240,0.5);background:rgba(255,255,255,0.04);padding:2px 7px;border-radius:5px;white-space:nowrap">{{ task.est }}</span></sc-if>
+    <sc-if value="{{ task.dueToday }}" hint-placeholder-val="{{ true }}"><span onClick="{{ task.cycleDue }}" title="Click to change due" style="cursor:pointer;font:500 11px 'JetBrains Mono';padding:2px 8px;border-radius:6px;white-space:nowrap;color:#e0a05a;background:rgba(224,160,90,0.14)">Today</span></sc-if>
+    <sc-if value="{{ task.dueTomorrow }}" hint-placeholder-val=""><span onClick="{{ task.cycleDue }}" title="Click to change due" style="cursor:pointer;font:500 11px 'JetBrains Mono';padding:2px 8px;border-radius:6px;white-space:nowrap;color:rgba(232,234,240,0.6);background:rgba(255,255,255,0.05)">Tomorrow</span></sc-if>
+    <sc-if value="{{ task.dueWeek }}" hint-placeholder-val=""><span onClick="{{ task.cycleDue }}" title="Click to change due" style="cursor:pointer;font:500 11px 'JetBrains Mono';padding:2px 8px;border-radius:6px;white-space:nowrap;color:rgba(232,234,240,0.6);background:rgba(255,255,255,0.05)">This week</span></sc-if>
+    <sc-if value="{{ task.dueSomeday }}" hint-placeholder-val=""><span onClick="{{ task.cycleDue }}" title="Click to change due" style="cursor:pointer;font:500 11px 'JetBrains Mono';padding:2px 8px;border-radius:6px;white-space:nowrap;color:rgba(232,234,240,0.45);background:rgba(255,255,255,0.04)">Someday</span></sc-if>
+      <sc-if value="{{ task.open }}" hint-placeholder-val="{{ true }}"><div onClick="{{ task.startFocus }}" title="Start a focus session" style-hover="background:rgba(124,140,255,0.28);color:#fff" style="cursor:pointer;flex:none;width:24px;height:24px;border-radius:7px;display:flex;align-items:center;justify-content:center;background:rgba(124,140,255,0.13);color:#9fb0ff;font-size:9px;padding-left:2px">&#9654;</div></sc-if>
+      <sc-if value="{{ task.hasSteps }}" hint-placeholder-val=""><div onClick="{{ task.expand }}" style-hover="color:#c3ccff" style="font:500 11px 'JetBrains Mono';color:#9fb0ff;cursor:pointer;white-space:nowrap">{{ task.stepLabel }}</div></sc-if>
+    </div>
+  </div>
+  <sc-if value="{{ task.expanded }}" hint-placeholder-val="">
+    <div style="padding:2px 2px 15px 56px;display:flex;flex-direction:column;gap:10px">
+      <div style="font:500 10px 'JetBrains Mono';letter-spacing:0.07em;text-transform:uppercase;color:rgba(232,234,240,0.35)">Break it into tiny steps</div>
+      <sc-for list="{{ task.steps }}" as="step" hint-placeholder-count="3">
+        <div onClick="{{ step.toggle }}" style-hover="opacity:0.85" style="display:flex;align-items:center;gap:10px;cursor:pointer">
+          <sc-if value="{{ step.done }}" hint-placeholder-val=""><div style="width:17px;height:17px;border-radius:5px;display:flex;align-items:center;justify-content:center;flex:none;font-size:9px;font-weight:700;background:#7c8cff;color:#0f1116;border:1.5px solid #7c8cff">&#10003;</div></sc-if>
+          <sc-if value="{{ step.open }}" hint-placeholder-val="{{ true }}"><div style="width:17px;height:17px;border-radius:5px;flex:none;border:1.5px solid rgba(255,255,255,0.2)"></div></sc-if>
+          <sc-if value="{{ step.done }}" hint-placeholder-val=""><span style="font-size:13px;text-decoration:line-through;color:rgba(232,234,240,0.38)">{{ step.t }}</span></sc-if>
+          <sc-if value="{{ step.open }}" hint-placeholder-val="{{ true }}"><span style="font-size:13px;color:rgba(232,234,240,0.82)">{{ step.t }}</span></sc-if>
+        </div>
+      </sc-for>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:17px;height:17px;border-radius:5px;flex:none;border:1.5px dashed rgba(255,255,255,0.2)"></div>
+        <input onKeyDown="{{ task.onStepKey }}" placeholder="Add a step, press Enter" style="flex:1;background:transparent;border:none;outline:none;color:#e8eaf0;font-family:'Hanken Grotesk';font-size:13px" />
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:520,&quot;height&quot;:56},&quot;task&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;object&quot;}}"></script>
+</body>
+</html>
