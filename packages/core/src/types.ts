@@ -7,6 +7,7 @@ import type {
   goals,
   inboxItems,
   meetings,
+  milestones,
   notes,
   projects,
   routineChecks,
@@ -24,6 +25,7 @@ export type TaskTag = typeof taskTags.$inferSelect
 export type TaskStep = typeof taskSteps.$inferSelect
 export type InboxItem = typeof inboxItems.$inferSelect
 export type Project = typeof projects.$inferSelect
+export type Milestone = typeof milestones.$inferSelect
 export type Goal = typeof goals.$inferSelect
 export type Routine = typeof routines.$inferSelect
 export type RoutineCheck = typeof routineChecks.$inferSelect

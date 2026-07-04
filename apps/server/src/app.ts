@@ -12,6 +12,7 @@ import {
   createDocInput,
   createGoalInput,
   createMeetingInput,
+  createMilestoneInput,
   createNoteInput,
   createProjectInput,
   createTaskInput,
@@ -24,6 +25,7 @@ import {
   updateCanvasCardInput,
   updateDocInput,
   updateGoalInput,
+  updateMilestoneInput,
   updateNoteInput,
   updateProjectInput,
   updateTaskInput,
@@ -169,6 +171,19 @@ export function createApp(svc: BeaconService, bus: Bus) {
   app.patch('/api/projects/:id', async (c) =>
     c.json(svc.updateProject(c.req.param('id'), updateProjectInput.parse(await c.req.json()))),
   )
+  app.get('/api/projects/:id/detail', (c) => c.json(svc.getProjectDetail(c.req.param('id'))))
+
+  // --- Milestones ----------------------------------------------------------
+  app.post('/api/milestones', async (c) =>
+    c.json(svc.createMilestone(createMilestoneInput.parse(await c.req.json())), 201),
+  )
+  app.patch('/api/milestones/:id', async (c) =>
+    c.json(svc.updateMilestone(c.req.param('id'), updateMilestoneInput.parse(await c.req.json()))),
+  )
+  app.delete('/api/milestones/:id', (c) => {
+    svc.deleteMilestone(c.req.param('id'))
+    return c.body(null, 204)
+  })
 
   // --- Goals ---------------------------------------------------------------
   app.get('/api/goals', (c) => c.json(svc.listGoals()))

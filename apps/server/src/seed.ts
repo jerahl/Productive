@@ -7,6 +7,7 @@ import {
   goals,
   inboxItems,
   meetings,
+  milestones,
   newId,
   notes,
   projects,
@@ -60,6 +61,7 @@ export function seed(db: Db): void {
   db.delete(taskTags).run()
   db.delete(focusSessions).run()
   db.delete(tasks).run()
+  db.delete(milestones).run()
   db.delete(inboxItems).run()
   db.delete(projects).run()
   db.delete(goals).run()
@@ -79,6 +81,23 @@ export function seed(db: Db): void {
   db.insert(projects).values(projectRows).run()
   const projectId = (name: string) => projectRows.find((p) => p.name === name)?.id ?? null
 
+  // --- Milestones (a couple projects broken into checkpoints) --------------
+  const milestoneRows = [
+    { project: 'App Redesign', title: 'Design polish', done: true },
+    { project: 'App Redesign', title: 'Ship v2', done: false },
+    { project: 'Q3 Roadmap', title: 'Draft the plan', done: false },
+  ].map((m, i) => ({
+    id: newId(),
+    projectId: projectId(m.project) as string,
+    title: m.title,
+    done: m.done,
+    sortOrder: i,
+    createdAt: daysAgo(20),
+  }))
+  db.insert(milestones).values(milestoneRows).run()
+  const milestoneId = (project: string, title: string) =>
+    milestoneRows.find((m) => m.title === title && m.projectId === projectId(project))?.id ?? null
+
   // --- Goals ----------------------------------------------------------------
   db.insert(goals)
     .values([
@@ -95,6 +114,7 @@ export function seed(db: Db): void {
     done?: boolean
     est: number
     project: string
+    milestone?: string
     due: 'today' | 'tomorrow' | 'week' | 'someday'
     priority: 'high' | 'med' | 'low'
     tags: string[]
@@ -106,6 +126,7 @@ export function seed(db: Db): void {
       title: 'Finish the Q3 planning doc',
       est: 45,
       project: 'Q3 Roadmap',
+      milestone: 'Draft the plan',
       due: 'today',
       priority: 'high',
       tags: ['Deep work'],
@@ -131,6 +152,7 @@ export function seed(db: Db): void {
       title: 'Review the design feedback',
       est: 20,
       project: 'App Redesign',
+      milestone: 'Ship v2',
       due: 'today',
       priority: 'med',
       tags: ['Design'],
@@ -215,6 +237,7 @@ export function seed(db: Db): void {
         doneAt: done ? hoursAgo(2) : null,
         estMinutes: t.est > 0 ? t.est : null,
         projectId: projectId(t.project),
+        milestoneId: t.milestone ? milestoneId(t.project, t.milestone) : null,
         goalId: null,
         due: t.due,
         priority: t.priority,

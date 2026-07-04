@@ -1,14 +1,22 @@
 import { MONO } from '../lib/format.ts'
 import { useProjects } from '../lib/queries.ts'
+import { useNav } from '../nav/NavContext.tsx'
+import { ProjectDetailView } from './ProjectDetailView.tsx'
 import { ViewHeader } from './ViewHeader.tsx'
 
 export function ProjectsView() {
   const { data: projects = [], isLoading } = useProjects()
+  const nav = useNav()
+
+  if (nav.projectFocus) {
+    return <ProjectDetailView id={nav.projectFocus} onBack={nav.clearProjectFocus} />
+  }
+
   return (
     <div className="view">
       <ViewHeader
         title="Projects"
-        subtitle="A few active streams. Progress is the dopamine — watch the bars fill."
+        subtitle="A few active streams. Open one to see its milestones and tasks."
       />
       {isLoading ? (
         <div style={{ color: 'rgba(232,234,240,0.5)', fontSize: 13 }}>Loading…</div>
@@ -23,11 +31,13 @@ export function ProjectsView() {
           {projects.map((p) => (
             <div
               key={p.id}
+              onClick={() => nav.openProject(p.id)}
               style={{
                 background: '#1a1e27',
                 border: '1px solid rgba(255,255,255,0.07)',
                 borderRadius: 16,
                 padding: '18px 20px',
+                cursor: 'pointer',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 15 }}>

@@ -20,6 +20,45 @@ export const useDoc = (id: string) =>
   useQuery({ queryKey: ['doc', id], queryFn: () => api.getDoc(id) })
 export const useCanvas = () => useQuery({ queryKey: ['canvas'], queryFn: api.getCanvas })
 export const useVision = () => useQuery({ queryKey: ['vision'], queryFn: api.getVision })
+export const useProjectDetail = (id: string) =>
+  useQuery({ queryKey: ['project', id], queryFn: () => api.getProjectDetail(id) })
+
+/** Project-detail mutations refresh the detail, the project list, tasks, and overview. */
+function useProjectMutation<A, R>(fn: (arg: A) => Promise<R>) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: () => {
+      for (const key of ['project', 'projects', 'tasks', 'overview']) {
+        qc.invalidateQueries({ queryKey: [key] })
+      }
+    },
+  })
+}
+
+export const useCreateMilestone = () =>
+  useProjectMutation((v: { projectId: string; title: string }) =>
+    api.createMilestone(v.projectId, v.title),
+  )
+export const useUpdateMilestone = () =>
+  useProjectMutation((v: { id: string; title?: string; done?: boolean }) =>
+    api.updateMilestone(v.id, { title: v.title, done: v.done }),
+  )
+export const useDeleteMilestone = () => useProjectMutation((id: string) => api.deleteMilestone(id))
+export const useCreateProjectTask = () =>
+  useProjectMutation((v: { title: string; projectId: string; milestoneId?: string }) =>
+    api.createTask({
+      title: v.title,
+      projectId: v.projectId,
+      milestoneId: v.milestoneId,
+      due: 'today',
+    }),
+  )
+export const useUpdateTask = () =>
+  useProjectMutation(
+    (v: { id: string; milestoneId?: string | null; done?: boolean; due?: string }) =>
+      api.updateTask(v.id, { milestoneId: v.milestoneId, done: v.done, due: v.due }),
+  )
 
 /** Mutation that refreshes a single query key on success. */
 function useKeyMutation<A, R>(fn: (arg: A) => Promise<R>, key: string) {

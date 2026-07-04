@@ -18,9 +18,13 @@ browser over SSE:
 - **Focus session** — full-screen overlay with a countdown, pause/resume, +5 min,
   and Done; sessions are logged (planned vs. actual); a daily rollover promotes
   `tomorrow` → `today` and streaks recompute from completions.
-- **Projects · Goals · Meetings · Routines · Notes · Docs** — computed project
-  bars, goals, an agenda with done/next/later, daily-resetting routine checks,
-  a sticky-note masonry, and a docs list with a markdown editor.
+- **Projects** — a card grid; open one for its detail: **milestones** (checkable,
+  with per-milestone progress) and the project's **tasks** grouped under them.
+  Those are real tasks — they show in the Tasks tab too, where each carries a
+  project pill that jumps back to the project.
+- **Goals · Meetings · Routines · Notes · Docs** — goals, an agenda with
+  done/next/later, daily-resetting routine checks, a sticky-note masonry, and a
+  docs list with a markdown editor.
 - **Canvas** — a spatial board with draggable, connectable cards; delete a card
   or edge; promote a card into a task or note.
 - **Vision board** — image tiles with drag-to-upload and editable captions.

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useFocus } from '../focus/FocusContext.tsx'
 import { MONO } from '../lib/format.ts'
 import {
@@ -7,6 +7,7 @@ import {
   useCyclePriority,
   useInbox,
   useOverview,
+  useProjects,
   useSetEnergy,
   useTasks,
   useToggleStep,
@@ -14,6 +15,7 @@ import {
   useTriage,
 } from '../lib/queries.ts'
 import type { EnergyLevel } from '../lib/types.ts'
+import { useNav } from '../nav/NavContext.tsx'
 import { TaskRow } from './TaskRow.tsx'
 
 const ENERGY: { label: string; level: EnergyLevel; color: string }[] = [
@@ -46,7 +48,10 @@ export function OverviewView() {
   const tasksQ = useTasks()
   const inboxQ = useInbox()
   const focus = useFocus()
+  const nav = useNav()
   const setEnergy = useSetEnergy()
+  const { data: projects = [] } = useProjects()
+  const projectName = useMemo(() => new Map(projects.map((p) => [p.id, p.name])), [projects])
 
   const toggleTask = useToggleTask()
   const cycleDue = useCycleDue()
@@ -229,6 +234,10 @@ export function OverviewView() {
                 onToggleStep={(sid) => toggleStep.mutate({ id: task.id, sid })}
                 onStartReorder={() => {}}
                 onStartFocus={() => focus.open({ taskId: task.id })}
+                projectName={task.projectId ? projectName.get(task.projectId) : null}
+                onOpenProject={
+                  task.projectId ? () => nav.openProject(task.projectId as string) : undefined
+                }
               />
             ))}
           </div>

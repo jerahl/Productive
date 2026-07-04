@@ -14,6 +14,7 @@ import {
   goals,
   inboxItems,
   meetings,
+  milestones,
   notes,
   projects,
   routineChecks,
@@ -32,6 +33,7 @@ import type {
   Goal,
   InboxItem,
   Meeting,
+  Milestone,
   Note,
   Project,
   TaskStep,
@@ -44,6 +46,7 @@ import type {
   CreateDocInput,
   CreateGoalInput,
   CreateMeetingInput,
+  CreateMilestoneInput,
   CreateNoteInput,
   CreateProjectInput,
   CreateTaskInput,
@@ -54,6 +57,7 @@ import type {
   UpdateCanvasCardInput,
   UpdateDocInput,
   UpdateGoalInput,
+  UpdateMilestoneInput,
   UpdateNoteInput,
   UpdateProjectInput,
   UpdateTaskInput,
@@ -103,6 +107,16 @@ function groupKeyForDue(due: Due): TaskGroup['key'] {
 
 /** A project with its computed completion stats (never stored redundantly). */
 export type ProjectWithStats = Project & { done: number; total: number; pct: number }
+
+/** A milestone with the counts of its linked tasks. */
+export type MilestoneWithStats = Milestone & { taskDone: number; taskTotal: number }
+
+/** A project opened up: its stats, milestones, and (real) linked tasks. */
+export type ProjectDetail = {
+  project: ProjectWithStats
+  milestones: MilestoneWithStats[]
+  tasks: TaskWithDetail[]
+}
 
 /** The canvas: freeform cards plus the edges connecting them. */
 export type CanvasBoard = { cards: CanvasCard[]; edges: CanvasEdge[] }
@@ -266,6 +280,7 @@ export function createService(db: BeaconDb, emit: Emit = () => {}) {
           priority: input.priority ?? 'low',
           estMinutes: input.estMinutes ?? null,
           projectId: input.projectId ?? null,
+          milestoneId: input.milestoneId ?? null,
           goalId: input.goalId ?? null,
           note: input.note ?? '',
           sortOrder: topOfGroup(groupKeyForDue(due)),
@@ -296,6 +311,7 @@ export function createService(db: BeaconDb, emit: Emit = () => {}) {
       if (patch.priority !== undefined) next.priority = patch.priority
       if (patch.estMinutes !== undefined) next.estMinutes = patch.estMinutes
       if (patch.projectId !== undefined) next.projectId = patch.projectId
+      if (patch.milestoneId !== undefined) next.milestoneId = patch.milestoneId
       if (patch.goalId !== undefined) next.goalId = patch.goalId
       if (patch.note !== undefined) next.note = patch.note
       if (patch.done !== undefined) {
@@ -626,6 +642,77 @@ export function createService(db: BeaconDb, emit: Emit = () => {}) {
       db.update(projects).set(patch).where(eq(projects.id, id)).run()
       fire('projects', 'tasks')
       return { ...existing, ...patch }
+    },
+
+    /** A project opened up: stats, milestones (with task counts), and its tasks. */
+    getProjectDetail(id: string): ProjectDetail {
+      const p = db.select().from(projects).where(eq(projects.id, id)).get()
+      if (!p) throw new NotFoundError('project', id)
+      const projTasks = db
+        .select()
+        .from(tasks)
+        .where(eq(tasks.projectId, id))
+        .orderBy(asc(tasks.sortOrder), asc(tasks.createdAt))
+        .all()
+      const total = projTasks.length
+      const done = projTasks.filter((t) => t.done).length
+      const project: ProjectWithStats = {
+        ...p,
+        done,
+        total,
+        pct: total > 0 ? Math.round((done / total) * 100) : 0,
+      }
+      const ms = db
+        .select()
+        .from(milestones)
+        .where(eq(milestones.projectId, id))
+        .orderBy(asc(milestones.sortOrder), asc(milestones.createdAt))
+        .all()
+      const milestonesWithStats: MilestoneWithStats[] = ms.map((m) => {
+        const mine = projTasks.filter((t) => t.milestoneId === m.id)
+        return { ...m, taskDone: mine.filter((t) => t.done).length, taskTotal: mine.length }
+      })
+      return {
+        project,
+        milestones: milestonesWithStats,
+        tasks: projTasks.map((t) => taskDetail(t.id)),
+      }
+    },
+
+    createMilestone(input: CreateMilestoneInput): Milestone {
+      if (!db.select().from(projects).where(eq(projects.id, input.projectId)).get())
+        throw new NotFoundError('project', input.projectId)
+      const max = db
+        .select({ v: sql<number | null>`max(${milestones.sortOrder})` })
+        .from(milestones)
+        .where(eq(milestones.projectId, input.projectId))
+        .get()
+      const row = {
+        id: newId(),
+        projectId: input.projectId,
+        title: input.title,
+        done: false,
+        sortOrder: (max?.v ?? -1) + 1,
+        createdAt: iso(),
+      }
+      db.insert(milestones).values(row).run()
+      fire('projects')
+      return row
+    },
+
+    updateMilestone(id: string, patch: UpdateMilestoneInput): Milestone {
+      const existing = db.select().from(milestones).where(eq(milestones.id, id)).get()
+      if (!existing) throw new NotFoundError('milestone', id)
+      db.update(milestones).set(patch).where(eq(milestones.id, id)).run()
+      fire('projects')
+      return { ...existing, ...patch }
+    },
+
+    deleteMilestone(id: string): void {
+      const res = db.delete(milestones).where(eq(milestones.id, id)).run()
+      if (res.changes === 0) throw new NotFoundError('milestone', id)
+      // Tasks that pointed at it keep the project but lose the milestone (FK set null).
+      fire('projects', 'tasks')
     },
 
     // --- Goals -------------------------------------------------------------

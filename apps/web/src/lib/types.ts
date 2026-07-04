@@ -20,6 +20,7 @@ export type Task = {
   doneAt: string | null
   estMinutes: number | null
   projectId: string | null
+  milestoneId: string | null
   goalId: string | null
   due: Due
   priority: Priority
@@ -50,6 +51,21 @@ export type Project = {
 }
 
 export type ProjectStats = Project & { done: number; total: number; pct: number }
+
+export type Milestone = {
+  id: string
+  projectId: string
+  title: string
+  done: boolean
+  sortOrder: number
+  createdAt: string
+}
+export type MilestoneWithStats = Milestone & { taskDone: number; taskTotal: number }
+export type ProjectDetail = {
+  project: ProjectStats
+  milestones: MilestoneWithStats[]
+  tasks: Task[]
+}
 
 export type Goal = { id: string; name: string; detail: string; pct: number; createdAt: string }
 

@@ -1,4 +1,4 @@
-import { type ComponentType, useState } from 'react'
+import type { ComponentType } from 'react'
 import { CanvasView } from './components/CanvasView.tsx'
 import { DocsView } from './components/DocsView.tsx'
 import { GoalsView } from './components/GoalsView.tsx'
@@ -8,11 +8,12 @@ import { NotesView } from './components/NotesView.tsx'
 import { OverviewView } from './components/OverviewView.tsx'
 import { ProjectsView } from './components/ProjectsView.tsx'
 import { RoutinesView } from './components/RoutinesView.tsx'
-import { NAV, Sidebar, type ViewId } from './components/Sidebar.tsx'
+import { Sidebar, type ViewId } from './components/Sidebar.tsx'
 import { TasksView } from './components/TasksView.tsx'
 import { VisionView } from './components/VisionView.tsx'
 import { FocusProvider } from './focus/FocusContext.tsx'
 import { useTasks } from './lib/queries.ts'
+import { NavProvider, useNav } from './nav/NavContext.tsx'
 
 const VIEWS: Record<ViewId, ComponentType> = {
   overview: OverviewView,
@@ -28,18 +29,18 @@ const VIEWS: Record<ViewId, ComponentType> = {
 }
 
 function Main() {
-  const [active, setActive] = useState<ViewId>('overview')
+  const nav = useNav()
   const tasksQ = useTasks()
 
   const todayOpen = tasksQ.data?.groups.find((g) => g.key === 'today')?.openCount ?? 0
-  const ActiveView = VIEWS[active]
+  const ActiveView = VIEWS[nav.view]
 
   return (
     <div
       className="shell"
       style={{ display: 'flex', height: '100vh', width: '100%', background: '#0f1116' }}
     >
-      <Sidebar active={active} onNavigate={setActive} tasksBadge={todayOpen} />
+      <Sidebar active={nav.view} onNavigate={nav.setView} tasksBadge={todayOpen} />
       <main
         style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', height: '100vh' }}
       >
@@ -55,7 +56,9 @@ function Main() {
 export function App() {
   return (
     <FocusProvider>
-      <Main />
+      <NavProvider>
+        <Main />
+      </NavProvider>
     </FocusProvider>
   )
 }

@@ -27,6 +27,7 @@ export const tasks = sqliteTable(
     doneAt: text('done_at'),
     estMinutes: integer('est_minutes'),
     projectId: text('project_id').references(() => projects.id, { onDelete: 'set null' }),
+    milestoneId: text('milestone_id').references(() => milestones.id, { onDelete: 'set null' }),
     goalId: text('goal_id').references(() => goals.id, { onDelete: 'set null' }),
     due: text('due').$type<Due>().notNull().default('today'),
     priority: text('priority').$type<Priority>().notNull().default('low'),
@@ -38,8 +39,24 @@ export const tasks = sqliteTable(
   (t) => [
     index('tasks_due_idx').on(t.due),
     index('tasks_project_idx').on(t.projectId),
+    index('tasks_milestone_idx').on(t.milestoneId),
     index('tasks_sort_idx').on(t.sortOrder),
   ],
+)
+
+export const milestones = sqliteTable(
+  'milestones',
+  {
+    id: text('id').primaryKey(),
+    projectId: text('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    title: text('title').notNull(),
+    done: integer('done', { mode: 'boolean' }).notNull().default(false),
+    sortOrder: integer('sort_order').notNull().default(0),
+    createdAt: text('created_at').notNull().default(now),
+  },
+  (t) => [index('milestones_project_idx').on(t.projectId)],
 )
 
 export const taskTags = sqliteTable(
@@ -198,6 +215,7 @@ export const schema = {
   taskSteps,
   inboxItems,
   projects,
+  milestones,
   goals,
   routines,
   routineChecks,

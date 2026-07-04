@@ -1,6 +1,7 @@
-import { type MouseEvent, useState } from 'react'
+import { type MouseEvent, useMemo, useState } from 'react'
 import { useFocus } from '../focus/FocusContext.tsx'
 import { MONO } from '../lib/format.ts'
+import { useProjects } from '../lib/queries.ts'
 import {
   useAddStep,
   useCreateTask,
@@ -15,6 +16,7 @@ import {
   useTriage,
 } from '../lib/queries.ts'
 import type { GroupKey, Task, TaskGroup } from '../lib/types.ts'
+import { useNav } from '../nav/NavContext.tsx'
 import { TaskRow } from './TaskRow.tsx'
 
 export function TasksView() {
@@ -31,6 +33,9 @@ export function TasksView() {
   const dismiss = useDismiss()
   const reorder = useReorder()
   const focus = useFocus()
+  const nav = useNav()
+  const { data: projects = [] } = useProjects()
+  const projectName = useMemo(() => new Map(projects.map((p) => [p.id, p.name])), [projects])
 
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [override, setOverride] = useState<{ group: GroupKey; ids: string[] } | null>(null)
@@ -125,6 +130,8 @@ export function TasksView() {
       onToggleStep={(sid) => toggleStep.mutate({ id: task.id, sid })}
       onStartReorder={(e) => startReorder(group, task.id, e)}
       onStartFocus={() => focus.open({ taskId: task.id })}
+      projectName={task.projectId ? projectName.get(task.projectId) : null}
+      onOpenProject={task.projectId ? () => nav.openProject(task.projectId as string) : undefined}
     />
   )
 

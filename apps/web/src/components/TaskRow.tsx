@@ -13,6 +13,8 @@ type Props = {
   onToggleStep: (stepId: string) => void
   onStartReorder: (e: MouseEvent) => void
   onStartFocus: () => void
+  projectName?: string | null
+  onOpenProject?: () => void
 }
 
 export function TaskRow({
@@ -26,6 +28,8 @@ export function TaskRow({
   onToggleStep,
   onStartReorder,
   onStartFocus,
+  projectName,
+  onOpenProject,
 }: Props) {
   const [stepDraft, setStepDraft] = useState('')
   const due = DUE_META[task.due]
@@ -151,6 +155,27 @@ export function TaskRow({
                   {tag}
                 </span>
               ))}
+            </div>
+          )}
+          {projectName && (
+            <div style={{ display: 'flex', marginTop: 6 }}>
+              <span
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onOpenProject?.()
+                }}
+                title="Open project"
+                style={{
+                  font: `500 10px ${MONO}`,
+                  color: 'rgba(232,234,240,0.6)',
+                  background: 'rgba(255,255,255,0.05)',
+                  padding: '2px 8px',
+                  borderRadius: 5,
+                  cursor: onOpenProject ? 'pointer' : 'default',
+                }}
+              >
+                ▸ {projectName}
+              </span>
             </div>
           )}
         </div>

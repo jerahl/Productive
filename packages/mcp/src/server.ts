@@ -158,6 +158,7 @@ export function createBeaconMcpServer(svc: BeaconService): McpServer {
         priority: priorityEnum.optional(),
         estMinutes: z.number().int().nonnegative().optional(),
         projectId: z.string().optional(),
+        milestoneId: z.string().optional(),
         note: z.string().optional(),
         tags: z.array(z.string()).optional(),
         steps: z.array(z.string()).optional(),
@@ -184,6 +185,8 @@ export function createBeaconMcpServer(svc: BeaconService): McpServer {
         due: dueEnum.optional(),
         priority: priorityEnum.optional(),
         estMinutes: z.number().int().nonnegative().nullable().optional(),
+        projectId: z.string().nullable().optional(),
+        milestoneId: z.string().nullable().optional(),
         note: z.string().optional(),
         done: z.boolean().optional(),
       },
@@ -398,6 +401,62 @@ function registerSurround(server: McpServer, svc: BeaconService): void {
     },
     async ({ projectId, ...patch }) =>
       ok('Updated project.', { project: svc.updateProject(projectId, patch) }),
+  )
+  server.registerTool(
+    'get_project',
+    {
+      title: 'Get project detail',
+      description: 'A project with its milestones (task counts) and its linked tasks.',
+      inputSchema: { projectId: z.string() },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ projectId }) => {
+      const d = svc.getProjectDetail(projectId)
+      return ok(
+        `${d.project.name}: ${d.project.done}/${d.project.total} tasks · ${d.milestones.length} milestone(s).`,
+        d as unknown as Record<string, unknown>,
+      )
+    },
+  )
+
+  // Milestones
+  server.registerTool(
+    'create_milestone',
+    {
+      title: 'Create milestone',
+      description: 'Add a milestone (checkpoint) to a project.',
+      inputSchema: { projectId: z.string(), title: z.string().trim().min(1) },
+    },
+    async ({ projectId, title }) =>
+      ok(`Added milestone "${title}".`, { milestone: svc.createMilestone({ projectId, title }) }),
+  )
+  server.registerTool(
+    'update_milestone',
+    {
+      title: 'Update milestone',
+      description: 'Rename a milestone or mark it done/undone.',
+      inputSchema: {
+        milestoneId: z.string(),
+        title: z.string().optional(),
+        done: z.boolean().optional(),
+      },
+      annotations: { idempotentHint: true },
+    },
+    async ({ milestoneId, ...patch }) =>
+      ok('Updated milestone.', { milestone: svc.updateMilestone(milestoneId, patch) }),
+  )
+  server.registerTool(
+    'delete_milestone',
+    {
+      title: 'Delete milestone',
+      description: 'Delete a milestone; its tasks stay in the project.',
+      inputSchema: { milestoneId: z.string() },
+      annotations: { destructiveHint: true },
+    },
+    async ({ milestoneId }) => {
+      svc.deleteMilestone(milestoneId)
+      return ok('Deleted milestone.')
+    },
   )
 
   // Goals

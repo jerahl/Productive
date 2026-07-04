@@ -39,6 +39,7 @@ export const createTaskInput = z.object({
   priority: prioritySchema.default('low'),
   estMinutes: z.number().int().nonnegative().optional(),
   projectId: z.string().optional(),
+  milestoneId: z.string().optional(),
   goalId: z.string().optional(),
   note: z.string().max(2000).optional(),
   tags: z.array(z.string().trim().min(1)).optional(),
@@ -52,10 +53,20 @@ export const updateTaskInput = z
     priority: prioritySchema,
     estMinutes: z.number().int().nonnegative().nullable(),
     projectId: z.string().nullable(),
+    milestoneId: z.string().nullable(),
     goalId: z.string().nullable(),
     note: z.string().max(2000),
     done: z.boolean(),
   })
+  .partial()
+
+export const createMilestoneInput = z.object({
+  projectId: z.string(),
+  title: z.string().trim().min(1).max(200),
+})
+
+export const updateMilestoneInput = z
+  .object({ title: z.string().trim().min(1).max(200), done: z.boolean() })
   .partial()
 
 export const addStepsInput = z.object({
@@ -168,3 +179,5 @@ export type UpdateCanvasCardInput = z.infer<typeof updateCanvasCardInput>
 export type ConnectCanvasInput = z.infer<typeof connectCanvasInput>
 export type PromoteCanvasInput = z.infer<typeof promoteCanvasInput>
 export type UpdateVisionTileInput = z.infer<typeof updateVisionTileInput>
+export type CreateMilestoneInput = z.infer<typeof createMilestoneInput>
+export type UpdateMilestoneInput = z.infer<typeof updateMilestoneInput>

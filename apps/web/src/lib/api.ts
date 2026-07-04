@@ -9,8 +9,10 @@ import type {
   GroupKey,
   InboxItem,
   Meeting,
+  Milestone,
   Note,
   Overview,
+  ProjectDetail,
   ProjectStats,
   RoutineView,
   Task,
@@ -37,6 +39,12 @@ export const api = {
   getTasks: () => req<{ groups: TaskGroup[] }>('/tasks'),
   getInbox: () => req<InboxItem[]>('/inbox'),
   getProjects: () => req<ProjectStats[]>('/projects'),
+  getProjectDetail: (id: string) => req<ProjectDetail>(`/projects/${id}/detail`),
+  createMilestone: (projectId: string, title: string) =>
+    req<Milestone>('/milestones', body({ projectId, title })),
+  updateMilestone: (id: string, data: { title?: string; done?: boolean }) =>
+    req<Milestone>(`/milestones/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteMilestone: (id: string) => req<void>(`/milestones/${id}`, { method: 'DELETE' }),
   getOverview: () => req<Overview>('/overview'),
   getGoals: () => req<Goal[]>('/goals'),
   getRoutines: () => req<RoutineView[]>('/routines'),
@@ -91,7 +99,26 @@ export const api = {
     req<Task>(`/inbox/${id}/triage`, body(data)),
   dismiss: (id: string) => req<void>(`/inbox/${id}/dismiss`, { method: 'POST' }),
 
-  createTask: (data: { title: string; due?: string }) => req<Task>('/tasks', body(data)),
+  createTask: (data: {
+    title: string
+    due?: string
+    priority?: string
+    projectId?: string
+    milestoneId?: string
+    estMinutes?: number
+  }) => req<Task>('/tasks', body(data)),
+  updateTask: (
+    id: string,
+    data: {
+      title?: string
+      due?: string
+      priority?: string
+      note?: string
+      done?: boolean
+      projectId?: string | null
+      milestoneId?: string | null
+    },
+  ) => req<Task>(`/tasks/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   toggleTask: (id: string) => req<Task>(`/tasks/${id}/toggle`, { method: 'POST' }),
   cycleDue: (id: string) => req<Task>(`/tasks/${id}/cycle-due`, { method: 'POST' }),
   cyclePriority: (id: string) => req<Task>(`/tasks/${id}/cycle-priority`, { method: 'POST' }),
