@@ -10,6 +10,7 @@ import {
 } from 'react'
 import { FocusOverlay } from '../components/FocusOverlay.tsx'
 import { api } from '../lib/api.ts'
+import type { BeaconEvent } from '../lib/types.ts'
 
 export type ActiveFocus = {
   sessionId: string
@@ -107,6 +108,43 @@ export function FocusProvider({ children }: { children: ReactNode }) {
     }, 1000)
     return () => clearInterval(t)
   }, [active?.running])
+
+  // Live updates: subscribe to the server's SSE stream so changes made over
+  // REST or MCP (e.g. Claude triaging the inbox) appear here within a second.
+  useEffect(() => {
+    const es = new EventSource('/api/events')
+    es.addEventListener('beacon', (ev) => {
+      let event: BeaconEvent
+      try {
+        event = JSON.parse((ev as MessageEvent).data)
+      } catch {
+        return
+      }
+      if (event.type === 'invalidate') {
+        for (const topic of event.topics) qc.invalidateQueries({ queryKey: [topic] })
+      } else if (event.type === 'focus:start') {
+        // Claude (or another client) started a session — open the overlay here.
+        const s = event.session
+        setActive((prev) => {
+          if (prev) return prev // don't interrupt an in-progress session
+          finishing.current = false
+          const total = s.plannedMinutes * 60
+          return {
+            sessionId: s.id,
+            taskId: s.taskId,
+            title: s.taskTitle,
+            totalSeconds: total,
+            secondsLeft: total,
+            elapsed: 0,
+            running: true,
+          }
+        })
+      } else if (event.type === 'focus:finish') {
+        setActive((prev) => (prev && prev.sessionId === event.sessionId ? null : prev))
+      }
+    })
+    return () => es.close()
+  }, [qc])
 
   return (
     <FocusCtx.Provider value={{ open, active, togglePause, addFive, finish }}>

@@ -12,7 +12,9 @@ import {
 } from '@beacon/core'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
+import { streamSSE } from 'hono/streaming'
 import { z } from 'zod'
+import type { Bus } from './bus.ts'
 
 const reorderInput = z.object({
   group: z.enum(['today', 'upcoming', 'someday']),
@@ -26,12 +28,29 @@ const stepsBody = z.union([addStepsInput, z.object({ text: z.string().trim().min
  * Build the REST API over the service layer (docs/PLAN.md §5). Kept as a pure
  * factory so tests can mount it against a temp-DB service.
  */
-export function createApp(svc: BeaconService) {
+export function createApp(svc: BeaconService, bus: Bus) {
   const app = new Hono()
 
   app.use('/api/*', cors())
 
   app.get('/api/health', (c) => c.json({ ok: true }))
+
+  // Server-Sent Events: the web client subscribes and invalidates its caches
+  // on each event, so REST/MCP changes appear live (docs/PLAN.md §5).
+  app.get('/api/events', (c) =>
+    streamSSE(c, async (stream) => {
+      const unsubscribe = bus.subscribe((event) => {
+        void stream.writeSSE({ event: 'beacon', data: JSON.stringify(event) }).catch(() => {})
+      })
+      stream.onAbort(unsubscribe)
+      await stream.writeSSE({ event: 'hello', data: '{}' })
+      while (!stream.aborted) {
+        await stream.sleep(15_000)
+        await stream.writeSSE({ event: 'ping', data: '{}' }).catch(() => {})
+      }
+      unsubscribe()
+    }),
+  )
 
   // --- Capture & triage ----------------------------------------------------
   app.post('/api/capture', async (c) => {

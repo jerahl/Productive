@@ -6,9 +6,10 @@ visible. Claude connects directly through a built-in MCP server and can triage t
 inbox, break tasks into tiny steps, start focus sessions, and run reviews while the
 UI updates live.
 
-**Status: Phase 2 — focus & overview.** The pnpm monorepo, shared `@beacon/core`
-domain (Drizzle schema + zod validators + service layer), SQLite migrations, and
-a demo seed are in place, plus the core loop and the focus/overview layer:
+**Status: Phase 3 — MCP server & live updates.** The pnpm monorepo, shared
+`@beacon/core` domain (Drizzle schema + zod validators + service layer), SQLite
+migrations, and a demo seed are in place, plus the core loop, the focus/overview
+layer, and a built-in MCP server:
 
 - **Tasks** view pixel-matched to the mock — inbox triage, Today/Upcoming/Someday
   groups, steps, due/priority cycling, drag-to-reorder.
@@ -16,10 +17,29 @@ a demo seed are in place, plus the core loop and the focus/overview layer:
   (low energy → suggests the shortest task), momentum/streak, next meeting,
   brain-dump inbox.
 - **Focus session** — full-screen overlay with a countdown, pause/resume, +5 min,
-  and Done; sessions are logged (planned vs. actual), and a daily rollover
-  promotes `tomorrow` → `today` while streaks recompute from completions.
+  and Done; sessions are logged (planned vs. actual); a daily rollover promotes
+  `tomorrow` → `today` and streaks recompute from completions.
+- **MCP server** at `/mcp` (Streamable HTTP, in the same process) with ~17 tools,
+  three resources, and three prompts — all delegating to the same service layer.
+  Changes stream to the browser over SSE (`/api/events`), so when Claude triages
+  the inbox the open UI updates within a second.
 
-The MCP server and the remaining views land in later phases (see `docs/PLAN.md §7`).
+The remaining views (Projects, Docs, Notes, Canvas, Vision) land in Phases 4–5
+(see `docs/PLAN.md §7`).
+
+## Connecting Claude
+
+With the server running (`pnpm --filter @beacon/server dev`):
+
+```bash
+# Claude Code — Streamable HTTP (recommended; drives live UI updates)
+claude mcp add --transport http beacon http://localhost:3000/mcp
+```
+
+For a stdio client (e.g. Claude Desktop), run `pnpm --filter @beacon/server mcp:stdio`,
+or point the client at that command. The stdio bridge shares the same SQLite
+database; use the HTTP transport when you want changes to appear live in an open
+browser. The full tool/resource/prompt catalog is in `docs/MCP_SERVER.md`.
 
 ## Repository layout
 

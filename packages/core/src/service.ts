@@ -3,6 +3,7 @@ import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import { DUE_BUCKETS } from './enums.ts'
 import type { Due, EnergyLevel, Priority } from './enums.ts'
 import { NotFoundError } from './errors.ts'
+import type { BeaconTopic, Emit } from './events.ts'
 import { newId } from './ids.ts'
 import {
   appState,
@@ -97,7 +98,12 @@ export type Overview = {
  * so the REST API and the MCP server stay thin and always agree. Every method
  * is synchronous: better-sqlite3 is synchronous, which keeps handlers simple.
  */
-export function createService(db: BeaconDb) {
+export function createService(db: BeaconDb, emit: Emit = () => {}) {
+  /** Emit an invalidation event for the given topics (no-op if no emitter). */
+  function fire(...topics: BeaconTopic[]): void {
+    emit({ type: 'invalidate', topics })
+  }
+
   /** Assemble a task with its ordered steps and tags. Throws if missing. */
   function taskDetail(id: string): TaskWithDetail {
     const task = db.select().from(tasks).where(eq(tasks.id, id)).get()
@@ -125,6 +131,7 @@ export function createService(db: BeaconDb) {
     capture(text: string): InboxItem {
       const row = { id: newId(), text, createdAt: iso() }
       db.insert(inboxItems).values(row).run()
+      fire('inbox', 'overview')
       return row
     },
 
@@ -143,12 +150,14 @@ export function createService(db: BeaconDb) {
         projectId: input.projectId,
       })
       db.delete(inboxItems).where(eq(inboxItems.id, inboxId)).run()
+      fire('inbox', 'tasks', 'overview')
       return task
     },
 
     dismissInboxItem(inboxId: string): void {
       const res = db.delete(inboxItems).where(eq(inboxItems.id, inboxId)).run()
       if (res.changes === 0) throw new NotFoundError('inbox item', inboxId)
+      fire('inbox', 'overview')
     },
 
     // --- Tasks -------------------------------------------------------------
@@ -219,6 +228,7 @@ export function createService(db: BeaconDb) {
           .values(input.steps.map((text, i) => ({ id: newId(), taskId: id, text, sortOrder: i })))
           .run()
       }
+      fire('tasks', 'overview')
       return taskDetail(id)
     },
 
@@ -238,6 +248,7 @@ export function createService(db: BeaconDb) {
         next.doneAt = patch.done ? iso() : null
       }
       db.update(tasks).set(next).where(eq(tasks.id, id)).run()
+      fire('tasks', 'overview')
       return taskDetail(id)
     },
 
@@ -249,6 +260,7 @@ export function createService(db: BeaconDb) {
         .set({ done, doneAt: done ? iso() : null, updatedAt: iso() })
         .where(eq(tasks.id, id))
         .run()
+      fire('tasks', 'overview')
       return taskDetail(id)
     },
 
@@ -258,6 +270,7 @@ export function createService(db: BeaconDb) {
       const idx = DUE_BUCKETS.indexOf(existing.due)
       const due = DUE_BUCKETS[(idx + 1) % DUE_BUCKETS.length]
       db.update(tasks).set({ due, updatedAt: iso() }).where(eq(tasks.id, id)).run()
+      fire('tasks', 'overview')
       return taskDetail(id)
     },
 
@@ -269,6 +282,7 @@ export function createService(db: BeaconDb) {
       const idx = order.indexOf(existing.priority)
       const priority = order[(idx + 1) % order.length] ?? 'low'
       db.update(tasks).set({ priority, updatedAt: iso() }).where(eq(tasks.id, id)).run()
+      fire('tasks', 'overview')
       return taskDetail(id)
     },
 
@@ -285,6 +299,7 @@ export function createService(db: BeaconDb) {
         .values(steps.map((text) => ({ id: newId(), taskId: id, text, sortOrder: order++ })))
         .run()
       db.update(tasks).set({ updatedAt: iso() }).where(eq(tasks.id, id)).run()
+      fire('tasks', 'overview')
       return taskDetail(id)
     },
 
@@ -297,6 +312,7 @@ export function createService(db: BeaconDb) {
       if (!step) throw new NotFoundError('step', stepId)
       db.update(taskSteps).set({ done: !step.done }).where(eq(taskSteps.id, stepId)).run()
       db.update(tasks).set({ updatedAt: iso() }).where(eq(tasks.id, taskId)).run()
+      fire('tasks', 'overview')
       return taskDetail(taskId)
     },
 
@@ -321,6 +337,7 @@ export function createService(db: BeaconDb) {
             .run()
         })
       })
+      fire('tasks', 'overview')
     },
 
     // --- App state (energy, rollover marker) -------------------------------
@@ -342,6 +359,7 @@ export function createService(db: BeaconDb) {
 
     setEnergy(level: EnergyLevel): void {
       this.setState('energy', level)
+      fire('overview')
     },
 
     // --- Focus sessions ----------------------------------------------------
@@ -363,6 +381,7 @@ export function createService(db: BeaconDb) {
         completed: false,
       }
       db.insert(focusSessions).values(row).run()
+      emit({ type: 'focus:start', session: row })
       return row
     },
 
@@ -383,6 +402,8 @@ export function createService(db: BeaconDb) {
           .where(eq(tasks.id, session.taskId))
           .run()
       }
+      emit({ type: 'focus:finish', sessionId })
+      fire('tasks', 'overview')
       return { ...session, completed: input.completed, endedAt, actualSeconds }
     },
 
@@ -402,6 +423,7 @@ export function createService(db: BeaconDb) {
           .set({ due: 'today', updatedAt: iso() })
           .where(eq(tasks.due, 'tomorrow'))
           .run()
+        fire('tasks', 'overview')
       }
       this.setState('last_rollover_date', today)
       return { rolled: last !== null }
@@ -494,6 +516,12 @@ export function createService(db: BeaconDb) {
 
     listMeetings(): Meeting[] {
       return db.select().from(meetings).orderBy(asc(meetings.startsAt)).all()
+    },
+
+    deleteTask(id: string): void {
+      const res = db.delete(tasks).where(eq(tasks.id, id)).run()
+      if (res.changes === 0) throw new NotFoundError('task', id)
+      fire('tasks', 'overview')
     },
 
     // --- Projects (read; full CRUD in Phase 4) -----------------------------

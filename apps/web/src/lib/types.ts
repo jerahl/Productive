@@ -79,3 +79,11 @@ export type FocusSession = {
   endedAt: string | null
   completed: boolean
 }
+
+export type BeaconTopic = 'tasks' | 'inbox' | 'overview' | 'projects' | 'meetings'
+
+/** SSE payloads from /api/events (mirrors @beacon/core's BeaconEvent). */
+export type BeaconEvent =
+  | { type: 'invalidate'; topics: BeaconTopic[] }
+  | { type: 'focus:start'; session: FocusSession }
+  | { type: 'focus:finish'; sessionId: string }
