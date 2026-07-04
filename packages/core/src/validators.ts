@@ -129,6 +129,23 @@ export const updateNoteInput = z
 
 export const updateDocInput = z.object({ title, tag: z.string(), bodyMd: z.string() }).partial()
 
+export const createCanvasCardInput = z.object({
+  text: z.string().optional(),
+  color: z.string().optional(),
+  x: z.number().optional(),
+  y: z.number().optional(),
+})
+
+export const updateCanvasCardInput = z
+  .object({ text: z.string(), color: z.string(), x: z.number(), y: z.number() })
+  .partial()
+
+export const connectCanvasInput = z.object({ fromCardId: z.string(), toCardId: z.string() })
+
+export const promoteCanvasInput = z.object({ to: promoteTargetSchema })
+
+export const updateVisionTileInput = z.object({ tag: z.string(), caption: z.string() }).partial()
+
 export type CaptureThoughtInput = z.infer<typeof captureThoughtInput>
 export type TriageInboxInput = z.infer<typeof triageInboxInput>
 export type CreateTaskInput = z.infer<typeof createTaskInput>
@@ -146,3 +163,8 @@ export type UpdateProjectInput = z.infer<typeof updateProjectInput>
 export type UpdateGoalInput = z.infer<typeof updateGoalInput>
 export type UpdateNoteInput = z.infer<typeof updateNoteInput>
 export type UpdateDocInput = z.infer<typeof updateDocInput>
+export type CreateCanvasCardInput = z.infer<typeof createCanvasCardInput>
+export type UpdateCanvasCardInput = z.infer<typeof updateCanvasCardInput>
+export type ConnectCanvasInput = z.infer<typeof connectCanvasInput>
+export type PromoteCanvasInput = z.infer<typeof promoteCanvasInput>
+export type UpdateVisionTileInput = z.infer<typeof updateVisionTileInput>

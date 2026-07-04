@@ -1,4 +1,6 @@
 import type {
+  CanvasBoard,
+  CanvasCard,
   Doc,
   DocMeta,
   EnergyLevel,
@@ -13,6 +15,7 @@ import type {
   RoutineView,
   Task,
   TaskGroup,
+  VisionTile,
 } from './types.ts'
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
@@ -51,6 +54,29 @@ export const api = {
     req<Doc>('/docs', body(data)),
   updateDoc: (id: string, data: { title?: string; tag?: string; bodyMd?: string }) =>
     req<Doc>(`/docs/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+  getCanvas: () => req<CanvasBoard>('/canvas'),
+  createCanvasCard: (data: { text?: string; color?: string; x?: number; y?: number } = {}) =>
+    req<CanvasCard>('/canvas/cards', body(data)),
+  updateCanvasCard: (id: string, data: { text?: string; color?: string; x?: number; y?: number }) =>
+    req<CanvasCard>(`/canvas/cards/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteCanvasCard: (id: string) => req<void>(`/canvas/cards/${id}`, { method: 'DELETE' }),
+  connectCanvas: (fromCardId: string, toCardId: string) =>
+    req<{ id: string }>('/canvas/edges', body({ fromCardId, toCardId })),
+  deleteCanvasEdge: (id: string) => req<void>(`/canvas/edges/${id}`, { method: 'DELETE' }),
+  promoteCanvasCard: (id: string, to: 'task' | 'note') =>
+    req<{ to: string }>(`/canvas/cards/${id}/promote`, body({ to })),
+
+  getVision: () => req<VisionTile[]>('/vision'),
+  updateVisionTile: (id: string, data: { tag?: string; caption?: string }) =>
+    req<VisionTile>(`/vision/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  uploadVisionImage: async (id: string, file: File): Promise<VisionTile> => {
+    const form = new FormData()
+    form.append('file', file)
+    const res = await fetch(`/api/vision/${id}/image`, { method: 'POST', body: form })
+    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
+    return (await res.json()) as VisionTile
+  },
 
   setEnergy: (level: EnergyLevel) => req<Overview>('/energy', body({ level })),
   startFocus: (data: { taskId?: string; minutes?: number } = {}) =>

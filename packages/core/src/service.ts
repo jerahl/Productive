@@ -7,6 +7,8 @@ import type { BeaconTopic, Emit } from './events.ts'
 import { newId } from './ids.ts'
 import {
   appState,
+  canvasCards,
+  canvasEdges,
   docs,
   focusSessions,
   goals,
@@ -20,8 +22,11 @@ import {
   taskSteps,
   taskTags,
   tasks,
+  visionTiles,
 } from './schema.ts'
 import type {
+  CanvasCard,
+  CanvasEdge,
   Doc,
   FocusSession,
   Goal,
@@ -31,8 +36,11 @@ import type {
   Project,
   TaskStep,
   TaskWithDetail,
+  VisionTile,
 } from './types.ts'
 import type {
+  ConnectCanvasInput,
+  CreateCanvasCardInput,
   CreateDocInput,
   CreateGoalInput,
   CreateMeetingInput,
@@ -40,13 +48,16 @@ import type {
   CreateProjectInput,
   CreateTaskInput,
   FinishFocusInput,
+  PromoteCanvasInput,
   StartFocusInput,
   TriageInboxInput,
+  UpdateCanvasCardInput,
   UpdateDocInput,
   UpdateGoalInput,
   UpdateNoteInput,
   UpdateProjectInput,
   UpdateTaskInput,
+  UpdateVisionTileInput,
 } from './validators.ts'
 
 /** The Drizzle database handle the services operate on. */
@@ -92,6 +103,19 @@ function groupKeyForDue(due: Due): TaskGroup['key'] {
 
 /** A project with its computed completion stats (never stored redundantly). */
 export type ProjectWithStats = Project & { done: number; total: number; pct: number }
+
+/** The canvas: freeform cards plus the edges connecting them. */
+export type CanvasBoard = { cards: CanvasCard[]; edges: CanvasEdge[] }
+
+/** The weekly-review digest (celebrate first, then loose ends). */
+export type WeeklyReview = {
+  completedThisWeek: { id: string; title: string }[]
+  focusMinutes: number
+  staleSomeday: { id: string; title: string }[]
+  inboxCount: number
+  goals: { name: string; pct: number }[]
+  projects: { name: string; pct: number }[]
+}
 
 /** Doc metadata (no body) for the list view. */
 export type DocMeta = Omit<Doc, 'bodyMd'>
@@ -765,6 +789,142 @@ export function createService(db: BeaconDb, emit: Emit = () => {}) {
       const res = db.delete(notes).where(eq(notes.id, id)).run()
       if (res.changes === 0) throw new NotFoundError('note', id)
       fire('notes')
+    },
+
+    // --- Canvas ------------------------------------------------------------
+    listCanvas(): CanvasBoard {
+      const cards = db.select().from(canvasCards).orderBy(asc(canvasCards.createdAt)).all()
+      const edges = db.select().from(canvasEdges).all()
+      return { cards, edges }
+    },
+
+    createCanvasCard(input: CreateCanvasCardInput): CanvasCard {
+      const palette = ['#7c8cff', '#5ec98a', '#e0a05a', '#c98ad6', '#e07a8a']
+      const n = db.select({ n: sql<number>`count(*)` }).from(canvasCards).get()?.n ?? 0
+      const row = {
+        id: newId(),
+        x: input.x ?? 50 + (n % 4) * 70,
+        y: input.y ?? 50 + (n % 3) * 60,
+        text: input.text ?? '',
+        color: input.color ?? (palette[n % palette.length] as string),
+        createdAt: iso(),
+      }
+      db.insert(canvasCards).values(row).run()
+      fire('canvas')
+      return row
+    },
+
+    updateCanvasCard(id: string, patch: UpdateCanvasCardInput): CanvasCard {
+      const existing = db.select().from(canvasCards).where(eq(canvasCards.id, id)).get()
+      if (!existing) throw new NotFoundError('canvas card', id)
+      db.update(canvasCards).set(patch).where(eq(canvasCards.id, id)).run()
+      fire('canvas')
+      return { ...existing, ...patch }
+    },
+
+    deleteCanvasCard(id: string): void {
+      const res = db.delete(canvasCards).where(eq(canvasCards.id, id)).run()
+      if (res.changes === 0) throw new NotFoundError('canvas card', id)
+      fire('canvas') // edges cascade via the FK
+    },
+
+    connectCanvasCards(input: ConnectCanvasInput): CanvasEdge {
+      const { fromCardId, toCardId } = input
+      if (fromCardId === toCardId) throw new NotFoundError('canvas card', 'self-link')
+      for (const id of [fromCardId, toCardId]) {
+        if (!db.select().from(canvasCards).where(eq(canvasCards.id, id)).get())
+          throw new NotFoundError('canvas card', id)
+      }
+      const existing = db
+        .select()
+        .from(canvasEdges)
+        .all()
+        .find(
+          (e) =>
+            (e.fromCardId === fromCardId && e.toCardId === toCardId) ||
+            (e.fromCardId === toCardId && e.toCardId === fromCardId),
+        )
+      if (existing) return existing
+      const row = { id: newId(), fromCardId, toCardId }
+      db.insert(canvasEdges).values(row).run()
+      fire('canvas')
+      return row
+    },
+
+    deleteCanvasEdge(id: string): void {
+      const res = db.delete(canvasEdges).where(eq(canvasEdges.id, id)).run()
+      if (res.changes === 0) throw new NotFoundError('canvas edge', id)
+      fire('canvas')
+    },
+
+    /** Promote a card into a task or a note (the card itself stays put). */
+    promoteCanvasCard(
+      id: string,
+      input: PromoteCanvasInput,
+    ): { to: 'task' | 'note'; task?: TaskWithDetail; note?: Note } {
+      const card = db.select().from(canvasCards).where(eq(canvasCards.id, id)).get()
+      if (!card) throw new NotFoundError('canvas card', id)
+      const text = card.text.trim() || 'Untitled'
+      if (input.to === 'task') {
+        return { to: 'task', task: this.createTask({ title: text, due: 'today', priority: 'low' }) }
+      }
+      return { to: 'note', note: this.createNote({ text, color: card.color ?? undefined }) }
+    },
+
+    // --- Vision board ------------------------------------------------------
+    listVision(): VisionTile[] {
+      return db.select().from(visionTiles).orderBy(asc(visionTiles.sortOrder)).all()
+    },
+
+    updateVisionTile(id: string, patch: UpdateVisionTileInput): VisionTile {
+      const existing = db.select().from(visionTiles).where(eq(visionTiles.id, id)).get()
+      if (!existing) throw new NotFoundError('vision tile', id)
+      db.update(visionTiles).set(patch).where(eq(visionTiles.id, id)).run()
+      fire('vision')
+      return { ...existing, ...patch }
+    },
+
+    setVisionImage(id: string, imagePath: string): VisionTile {
+      const existing = db.select().from(visionTiles).where(eq(visionTiles.id, id)).get()
+      if (!existing) throw new NotFoundError('vision tile', id)
+      db.update(visionTiles).set({ imagePath }).where(eq(visionTiles.id, id)).run()
+      fire('vision')
+      return { ...existing, imagePath }
+    },
+
+    // --- Weekly review -----------------------------------------------------
+    weeklyReview(): WeeklyReview {
+      const now = new Date()
+      const weekAgo = new Date(now.getTime() - 7 * 24 * 3600_000).toISOString()
+      const completedThisWeek = db
+        .select()
+        .from(tasks)
+        .where(eq(tasks.done, true))
+        .all()
+        .filter((t) => t.doneAt && t.doneAt >= weekAgo)
+        .map((t) => ({ id: t.id, title: t.title }))
+      const focusSeconds = db
+        .select()
+        .from(focusSessions)
+        .where(eq(focusSessions.completed, true))
+        .all()
+        .filter((f) => (f.endedAt ?? f.startedAt) >= weekAgo)
+        .reduce((sum, f) => sum + f.actualSeconds, 0)
+      const staleSomeday = db
+        .select()
+        .from(tasks)
+        .where(and(eq(tasks.due, 'someday'), eq(tasks.done, false)))
+        .all()
+        .map((t) => ({ id: t.id, title: t.title }))
+      const inboxCount = db.select({ n: sql<number>`count(*)` }).from(inboxItems).get()?.n ?? 0
+      return {
+        completedThisWeek,
+        focusMinutes: Math.round(focusSeconds / 60),
+        staleSomeday,
+        inboxCount,
+        goals: this.listGoals().map((g) => ({ name: g.name, pct: g.pct })),
+        projects: this.listProjects().map((p) => ({ name: p.name, pct: p.pct })),
+      }
     },
   }
 }

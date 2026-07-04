@@ -1,19 +1,20 @@
 import { type ComponentType, useState } from 'react'
+import { CanvasView } from './components/CanvasView.tsx'
 import { DocsView } from './components/DocsView.tsx'
 import { GoalsView } from './components/GoalsView.tsx'
 import { Header } from './components/Header.tsx'
 import { MeetingsView } from './components/MeetingsView.tsx'
 import { NotesView } from './components/NotesView.tsx'
 import { OverviewView } from './components/OverviewView.tsx'
-import { Placeholder } from './components/Placeholder.tsx'
 import { ProjectsView } from './components/ProjectsView.tsx'
 import { RoutinesView } from './components/RoutinesView.tsx'
 import { NAV, Sidebar, type ViewId } from './components/Sidebar.tsx'
 import { TasksView } from './components/TasksView.tsx'
+import { VisionView } from './components/VisionView.tsx'
 import { FocusProvider } from './focus/FocusContext.tsx'
 import { useTasks } from './lib/queries.ts'
 
-const VIEWS: Partial<Record<ViewId, ComponentType>> = {
+const VIEWS: Record<ViewId, ComponentType> = {
   overview: OverviewView,
   tasks: TasksView,
   projects: ProjectsView,
@@ -22,6 +23,8 @@ const VIEWS: Partial<Record<ViewId, ComponentType>> = {
   goals: GoalsView,
   routines: RoutinesView,
   notes: NotesView,
+  canvas: CanvasView,
+  vision: VisionView,
 }
 
 function Main() {
@@ -29,7 +32,6 @@ function Main() {
   const tasksQ = useTasks()
 
   const todayOpen = tasksQ.data?.groups.find((g) => g.key === 'today')?.openCount ?? 0
-  const label = NAV.find((n) => n.id === active)?.label ?? active
   const ActiveView = VIEWS[active]
 
   return (
@@ -43,7 +45,7 @@ function Main() {
       >
         <Header />
         <div className="main-pad" style={{ flex: 1, overflowY: 'auto', padding: '26px 28px 64px' }}>
-          {ActiveView ? <ActiveView /> : <Placeholder view={active} label={label} />}
+          <ActiveView />
         </div>
       </main>
     </div>

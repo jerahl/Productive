@@ -18,6 +18,8 @@ export const useDocs = () => useQuery({ queryKey: ['docs'], queryFn: api.getDocs
 export const useNotes = () => useQuery({ queryKey: ['notes'], queryFn: api.getNotes })
 export const useDoc = (id: string) =>
   useQuery({ queryKey: ['doc', id], queryFn: () => api.getDoc(id) })
+export const useCanvas = () => useQuery({ queryKey: ['canvas'], queryFn: api.getCanvas })
+export const useVision = () => useQuery({ queryKey: ['vision'], queryFn: api.getVision })
 
 /** Mutation that refreshes a single query key on success. */
 function useKeyMutation<A, R>(fn: (arg: A) => Promise<R>, key: string) {

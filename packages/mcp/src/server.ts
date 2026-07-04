@@ -3,6 +3,7 @@ import {
   DUE_BUCKETS,
   ENERGY_LEVELS,
   PRIORITIES,
+  PROMOTE_TARGETS,
   type TaskWithDetail,
 } from '@beacon/core'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
@@ -347,9 +348,365 @@ export function createBeaconMcpServer(svc: BeaconService): McpServer {
     },
   )
 
+  registerSurround(server, svc)
   registerResources(server, svc)
   registerPrompts(server)
   return server
+}
+
+/** Projects, goals, routines, meetings, notes, docs, canvas, vision, review. */
+function registerSurround(server: McpServer, svc: BeaconService): void {
+  // Projects
+  server.registerTool(
+    'list_projects',
+    {
+      title: 'List projects',
+      description: 'Projects with computed completion %.',
+      annotations: { readOnlyHint: true },
+    },
+    async () => ok('projects', { projects: svc.listProjects() }),
+  )
+  server.registerTool(
+    'create_project',
+    {
+      title: 'Create project',
+      description: 'Create a lightweight project bucket.',
+      inputSchema: {
+        name: z.string().trim().min(1),
+        color: z.string().optional(),
+        dueLabel: z.string().optional(),
+      },
+    },
+    async ({ name, color, dueLabel }) =>
+      ok(`Created project "${name}".`, {
+        project: svc.createProject({ name, color: color ?? '#7c8cff', dueLabel }),
+      }),
+  )
+  server.registerTool(
+    'update_project',
+    {
+      title: 'Update project',
+      description: 'Rename, recolor, relabel, or archive a project.',
+      inputSchema: {
+        projectId: z.string(),
+        name: z.string().optional(),
+        color: z.string().optional(),
+        dueLabel: z.string().optional(),
+        archived: z.boolean().optional(),
+      },
+      annotations: { idempotentHint: true },
+    },
+    async ({ projectId, ...patch }) =>
+      ok('Updated project.', { project: svc.updateProject(projectId, patch) }),
+  )
+
+  // Goals
+  server.registerTool(
+    'list_goals',
+    {
+      title: 'List goals',
+      description: 'Directional goals with manual progress.',
+      annotations: { readOnlyHint: true },
+    },
+    async () => ok('goals', { goals: svc.listGoals() }),
+  )
+  server.registerTool(
+    'create_goal',
+    {
+      title: 'Create goal',
+      description: 'Create a directional goal.',
+      inputSchema: {
+        name: z.string().trim().min(1),
+        detail: z.string().optional(),
+        pct: z.number().int().min(0).max(100).optional(),
+      },
+    },
+    async ({ name, detail, pct }) =>
+      ok(`Created goal "${name}".`, { goal: svc.createGoal({ name, detail, pct: pct ?? 0 }) }),
+  )
+  server.registerTool(
+    'update_goal',
+    {
+      title: 'Update goal',
+      description: 'Update a goal (pct is manual — the app does not compute it).',
+      inputSchema: {
+        goalId: z.string(),
+        name: z.string().optional(),
+        detail: z.string().optional(),
+        pct: z.number().int().min(0).max(100).optional(),
+      },
+      annotations: { idempotentHint: true },
+    },
+    async ({ goalId, ...patch }) => ok('Updated goal.', { goal: svc.updateGoal(goalId, patch) }),
+  )
+
+  // Routines
+  server.registerTool(
+    'list_routines',
+    {
+      title: 'List routines',
+      description: "Morning/evening routines with today's check-state.",
+      annotations: { readOnlyHint: true },
+    },
+    async () => ok('routines', { routines: svc.listRoutines() }),
+  )
+  server.registerTool(
+    'check_routine_item',
+    {
+      title: 'Check routine item',
+      description: "Toggle a routine item's done-state for today.",
+      inputSchema: { routineId: z.string() },
+    },
+    async ({ routineId }) =>
+      ok('Toggled routine item.', { routines: svc.toggleRoutineCheck(routineId) }),
+  )
+
+  // Meetings
+  server.registerTool(
+    'list_meetings',
+    {
+      title: 'List meetings',
+      description: 'The agenda, earliest first.',
+      annotations: { readOnlyHint: true },
+    },
+    async () => ok('meetings', { meetings: svc.listMeetings() }),
+  )
+  server.registerTool(
+    'create_meeting',
+    {
+      title: 'Create meeting',
+      description: 'Add a meeting. startsAt is an ISO-8601 timestamp.',
+      inputSchema: {
+        title: z.string().trim().min(1),
+        startsAt: z.string(),
+        who: z.string().optional(),
+      },
+    },
+    async ({ title, startsAt, who }) =>
+      ok(`Added "${title}".`, { meeting: svc.createMeeting({ title, startsAt, who }) }),
+  )
+  server.registerTool(
+    'delete_meeting',
+    {
+      title: 'Delete meeting',
+      description: 'Remove a meeting.',
+      inputSchema: { meetingId: z.string() },
+      annotations: { destructiveHint: true },
+    },
+    async ({ meetingId }) => {
+      svc.deleteMeeting(meetingId)
+      return ok('Deleted meeting.')
+    },
+  )
+
+  // Notes
+  server.registerTool(
+    'list_notes',
+    {
+      title: 'List notes',
+      description: 'Freeform sticky notes.',
+      annotations: { readOnlyHint: true },
+    },
+    async () => ok('notes', { notes: svc.listNotes() }),
+  )
+  server.registerTool(
+    'create_note',
+    {
+      title: 'Create note',
+      description: 'Add a freeform note.',
+      inputSchema: { text: z.string().trim().min(1), color: z.string().optional() },
+    },
+    async ({ text, color }) => ok('Added note.', { note: svc.createNote({ text, color }) }),
+  )
+  server.registerTool(
+    'update_note',
+    {
+      title: 'Update note',
+      description: 'Edit a note.',
+      inputSchema: {
+        noteId: z.string(),
+        text: z.string().optional(),
+        color: z.string().nullable().optional(),
+      },
+      annotations: { idempotentHint: true },
+    },
+    async ({ noteId, text, color }) =>
+      ok('Updated note.', { note: svc.updateNote(noteId, { text, color }) }),
+  )
+  server.registerTool(
+    'delete_note',
+    {
+      title: 'Delete note',
+      description: 'Delete a note.',
+      inputSchema: { noteId: z.string() },
+      annotations: { destructiveHint: true },
+    },
+    async ({ noteId }) => {
+      svc.deleteNote(noteId)
+      return ok('Deleted note.')
+    },
+  )
+
+  // Docs
+  server.registerTool(
+    'list_docs',
+    {
+      title: 'List docs',
+      description: 'Doc metadata (no bodies).',
+      annotations: { readOnlyHint: true },
+    },
+    async () => ok('docs', { docs: svc.listDocs() }),
+  )
+  server.registerTool(
+    'read_doc',
+    {
+      title: 'Read doc',
+      description: 'Full markdown body of a doc.',
+      inputSchema: { docId: z.string() },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ docId }) => {
+      const doc = svc.getDoc(docId)
+      return ok(`Doc "${doc.title}".`, { doc })
+    },
+  )
+  server.registerTool(
+    'create_doc',
+    {
+      title: 'Create doc',
+      description: 'Create a markdown doc.',
+      inputSchema: {
+        title: z.string().trim().min(1),
+        tag: z.string().optional(),
+        bodyMd: z.string().optional(),
+      },
+    },
+    async ({ title, tag, bodyMd }) =>
+      ok(`Created doc "${title}".`, { doc: svc.createDoc({ title, tag, bodyMd: bodyMd ?? '' }) }),
+  )
+  server.registerTool(
+    'update_doc',
+    {
+      title: 'Update doc',
+      description: 'Edit a doc.',
+      inputSchema: {
+        docId: z.string(),
+        title: z.string().optional(),
+        tag: z.string().optional(),
+        bodyMd: z.string().optional(),
+      },
+      annotations: { idempotentHint: true },
+    },
+    async ({ docId, ...patch }) => ok('Updated doc.', { doc: svc.updateDoc(docId, patch) }),
+  )
+
+  // Canvas
+  server.registerTool(
+    'list_canvas',
+    {
+      title: 'List canvas',
+      description: 'Canvas cards and the edges connecting them.',
+      annotations: { readOnlyHint: true },
+    },
+    async () => ok('canvas', svc.listCanvas() as unknown as Record<string, unknown>),
+  )
+  server.registerTool(
+    'create_canvas_card',
+    {
+      title: 'Create canvas card',
+      description: 'Add a card to the spatial canvas.',
+      inputSchema: {
+        text: z.string().optional(),
+        color: z.string().optional(),
+        x: z.number().optional(),
+        y: z.number().optional(),
+      },
+    },
+    async (input) => ok('Added card.', { card: svc.createCanvasCard(input) }),
+  )
+  server.registerTool(
+    'move_canvas_card',
+    {
+      title: 'Move canvas card',
+      description: 'Reposition a card (also edits text/color).',
+      inputSchema: {
+        cardId: z.string(),
+        x: z.number().optional(),
+        y: z.number().optional(),
+        text: z.string().optional(),
+        color: z.string().optional(),
+      },
+      annotations: { idempotentHint: true },
+    },
+    async ({ cardId, ...patch }) =>
+      ok('Moved card.', { card: svc.updateCanvasCard(cardId, patch) }),
+  )
+  server.registerTool(
+    'connect_canvas_cards',
+    {
+      title: 'Connect canvas cards',
+      description: 'Draw an edge between two cards.',
+      inputSchema: { fromCardId: z.string(), toCardId: z.string() },
+    },
+    async ({ fromCardId, toCardId }) =>
+      ok('Connected cards.', { edge: svc.connectCanvasCards({ fromCardId, toCardId }) }),
+  )
+  server.registerTool(
+    'promote_canvas_card',
+    {
+      title: 'Promote canvas card',
+      description: 'Turn a card into a task or a note.',
+      inputSchema: { cardId: z.string(), to: z.enum(PROMOTE_TARGETS) },
+    },
+    async ({ cardId, to }) => {
+      const res = svc.promoteCanvasCard(cardId, { to })
+      return ok(`Promoted card to ${to}.`, res as unknown as Record<string, unknown>)
+    },
+  )
+
+  // Vision
+  server.registerTool(
+    'list_vision',
+    {
+      title: 'List vision tiles',
+      description: 'The vision board.',
+      annotations: { readOnlyHint: true },
+    },
+    async () => ok('vision', { tiles: svc.listVision() }),
+  )
+  server.registerTool(
+    'update_vision_tile',
+    {
+      title: 'Update vision tile',
+      description: 'Edit a tile’s tag or caption (images upload via the web UI).',
+      inputSchema: {
+        tileId: z.string(),
+        tag: z.string().optional(),
+        caption: z.string().optional(),
+      },
+      annotations: { idempotentHint: true },
+    },
+    async ({ tileId, tag, caption }) =>
+      ok('Updated tile.', { tile: svc.updateVisionTile(tileId, { tag, caption }) }),
+  )
+
+  // Review
+  server.registerTool(
+    'weekly_review',
+    {
+      title: 'Weekly review',
+      description:
+        'A read-only digest: wins this week, focus minutes, stale someday items, inbox leftovers, goal/project state.',
+      annotations: { readOnlyHint: true },
+    },
+    async () => {
+      const r = svc.weeklyReview()
+      return ok(
+        `${r.completedThisWeek.length} done this week · ${r.focusMinutes}m focus.`,
+        r as unknown as Record<string, unknown>,
+      )
+    },
+  )
 }
 
 function registerResources(server: McpServer, svc: BeaconService): void {
@@ -429,6 +786,17 @@ function registerPrompts(server: McpServer): void {
       userText(
         'I’m going to brain-dump. Capture everything I say with capture_thought, one call per ' +
           'distinct thought, with zero judgment and no triage. When I’m done, offer to run daily-triage.',
+      ),
+  )
+
+  server.registerPrompt(
+    'weekly-review',
+    { title: 'Weekly review', description: 'Celebrate wins, clear stale items, set next week.' },
+    () =>
+      userText(
+        'Run weekly_review. Celebrate the wins first (be genuinely kind). Then walk the stale ' +
+          'Someday items and any inbox leftovers, proposing keep/dismiss for each. Offer to update ' +
+          'goal percents, and draft a short focus for next week.',
       ),
   )
 }

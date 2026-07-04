@@ -11,6 +11,8 @@ export type BeaconTopic =
   | 'meetings'
   | 'docs'
   | 'notes'
+  | 'canvas'
+  | 'vision'
 
 /**
  * Events emitted by the service layer after a mutation. The server fans these

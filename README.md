@@ -6,28 +6,28 @@ visible. Claude connects directly through a built-in MCP server and can triage t
 inbox, break tasks into tiny steps, start focus sessions, and run reviews while the
 UI updates live.
 
-**Status: Phase 4 — surround views.** The pnpm monorepo, shared `@beacon/core`
-domain (Drizzle schema + zod validators + service layer), SQLite migrations, and
-a demo seed are in place, plus the core loop, the focus/overview layer, a
-built-in MCP server, and all the surrounding views — Projects, Goals, Meetings,
-Routines (with a daily check-state reset), Notes (create/edit/delete), and Docs
-(list + a markdown editor):
+**Status: Phase 5 — feature-complete.** All ten views from the design are built,
+the focus overlay works, and a built-in MCP server (44 tools, 6 resources, 4
+prompts) lets Claude operate the whole app with changes streaming live to the
+browser over SSE:
 
-- **Tasks** view pixel-matched to the mock — inbox triage, Today/Upcoming/Someday
-  groups, steps, due/priority cycling, drag-to-reorder.
-- **Overview** — "right now — just one thing", today progress, energy selector
-  (low energy → suggests the shortest task), momentum/streak, next meeting,
-  brain-dump inbox.
+- **Tasks** — inbox triage, Today/Upcoming/Someday groups, steps, due/priority
+  cycling, drag-to-reorder.
+- **Overview** — "right now — just one thing" (low energy → suggests the shortest
+  task), today progress, momentum/streak, next meeting, brain-dump inbox.
 - **Focus session** — full-screen overlay with a countdown, pause/resume, +5 min,
   and Done; sessions are logged (planned vs. actual); a daily rollover promotes
   `tomorrow` → `today` and streaks recompute from completions.
-- **MCP server** at `/mcp` (Streamable HTTP, in the same process) with ~17 tools,
-  three resources, and three prompts — all delegating to the same service layer.
-  Changes stream to the browser over SSE (`/api/events`), so when Claude triages
-  the inbox the open UI updates within a second.
-
-Canvas and the Vision board (plus the remaining surround MCP tools) land in
-Phase 5 (see `docs/PLAN.md §7`).
+- **Projects · Goals · Meetings · Routines · Notes · Docs** — computed project
+  bars, goals, an agenda with done/next/later, daily-resetting routine checks,
+  a sticky-note masonry, and a docs list with a markdown editor.
+- **Canvas** — a spatial board with draggable, connectable cards; delete a card
+  or edge; promote a card into a task or note.
+- **Vision board** — image tiles with drag-to-upload and editable captions.
+- **MCP server** at `/mcp` (Streamable HTTP, same process): 44 tools, resources,
+  and prompts, all delegating to the shared service layer. Changes stream to the
+  browser over SSE (`/api/events`), so when Claude triages the inbox — or moves a
+  canvas card — the open UI updates within a second.
 
 ## Connecting Claude
 

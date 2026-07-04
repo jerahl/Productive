@@ -1,8 +1,14 @@
+import { createReadStream, existsSync } from 'node:fs'
+import { writeFile } from 'node:fs/promises'
+import { extname, join } from 'node:path'
+import { Readable } from 'node:stream'
 import {
   type BeaconService,
   NotFoundError,
   addStepsInput,
   captureThoughtInput,
+  connectCanvasInput,
+  createCanvasCardInput,
   createDocInput,
   createGoalInput,
   createMeetingInput,
@@ -10,20 +16,34 @@ import {
   createProjectInput,
   createTaskInput,
   finishFocusInput,
+  newId,
+  promoteCanvasInput,
   setEnergyInput,
   startFocusInput,
   triageInboxInput,
+  updateCanvasCardInput,
   updateDocInput,
   updateGoalInput,
   updateNoteInput,
   updateProjectInput,
   updateTaskInput,
+  updateVisionTileInput,
 } from '@beacon/core'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { streamSSE } from 'hono/streaming'
 import { z } from 'zod'
 import type { Bus } from './bus.ts'
+import { uploadsDir } from './env.ts'
+
+const MIME: Record<string, string> = {
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
+  '.svg': 'image/svg+xml',
+}
 
 const reorderInput = z.object({
   group: z.enum(['today', 'upcoming', 'someday']),
@@ -193,6 +213,63 @@ export function createApp(svc: BeaconService, bus: Bus) {
   app.delete('/api/notes/:id', (c) => {
     svc.deleteNote(c.req.param('id'))
     return c.body(null, 204)
+  })
+
+  // --- Canvas --------------------------------------------------------------
+  app.get('/api/canvas', (c) => c.json(svc.listCanvas()))
+  app.post('/api/canvas/cards', async (c) =>
+    c.json(
+      svc.createCanvasCard(createCanvasCardInput.parse(await c.req.json().catch(() => ({})))),
+      201,
+    ),
+  )
+  app.patch('/api/canvas/cards/:id', async (c) =>
+    c.json(
+      svc.updateCanvasCard(c.req.param('id'), updateCanvasCardInput.parse(await c.req.json())),
+    ),
+  )
+  app.delete('/api/canvas/cards/:id', (c) => {
+    svc.deleteCanvasCard(c.req.param('id'))
+    return c.body(null, 204)
+  })
+  app.post('/api/canvas/edges', async (c) =>
+    c.json(svc.connectCanvasCards(connectCanvasInput.parse(await c.req.json())), 201),
+  )
+  app.delete('/api/canvas/edges/:id', (c) => {
+    svc.deleteCanvasEdge(c.req.param('id'))
+    return c.body(null, 204)
+  })
+  app.post('/api/canvas/cards/:id/promote', async (c) =>
+    c.json(
+      svc.promoteCanvasCard(c.req.param('id'), promoteCanvasInput.parse(await c.req.json())),
+      201,
+    ),
+  )
+
+  // --- Vision board --------------------------------------------------------
+  app.get('/api/vision', (c) => c.json(svc.listVision()))
+  app.patch('/api/vision/:id', async (c) =>
+    c.json(
+      svc.updateVisionTile(c.req.param('id'), updateVisionTileInput.parse(await c.req.json())),
+    ),
+  )
+  app.post('/api/vision/:id/image', async (c) => {
+    const form = await c.req.parseBody()
+    const file = form.file
+    if (!(file instanceof File)) return c.json({ error: 'Expected a file field named "file"' }, 400)
+    const ext = extname(file.name || '').toLowerCase() || '.png'
+    const name = `${newId()}${ext}`
+    await writeFile(join(uploadsDir(), name), Buffer.from(await file.arrayBuffer()))
+    return c.json(svc.setVisionImage(c.req.param('id'), name), 201)
+  })
+  app.get('/api/uploads/:name', (c) => {
+    const name = c.req.param('name')
+    if (name.includes('/') || name.includes('..')) return c.body(null, 400)
+    const path = join(uploadsDir(), name)
+    if (!existsSync(path)) return c.body(null, 404)
+    c.header('content-type', MIME[extname(name).toLowerCase()] ?? 'application/octet-stream')
+    c.header('cache-control', 'public, max-age=31536000, immutable')
+    return c.body(Readable.toWeb(createReadStream(path)) as ReadableStream)
   })
 
   // --- Errors --------------------------------------------------------------

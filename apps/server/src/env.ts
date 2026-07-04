@@ -19,3 +19,10 @@ export function resolveDbPath(): string {
 export function migrationsDir(): string {
   return join(dirname(new URL(import.meta.url).pathname), '..', 'drizzle')
 }
+
+/** Vision-board uploads live beside the database (docs/PLAN.md §5). */
+export function uploadsDir(): string {
+  const dir = join(dirname(resolveDbPath()), 'uploads')
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
+  return dir
+}

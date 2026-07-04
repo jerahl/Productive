@@ -86,6 +86,25 @@ export type Note = {
   updatedAt: string
 }
 
+export type CanvasCard = {
+  id: string
+  x: number
+  y: number
+  text: string
+  color: string | null
+  createdAt: string
+}
+export type CanvasEdge = { id: string; fromCardId: string; toCardId: string }
+export type CanvasBoard = { cards: CanvasCard[]; edges: CanvasEdge[] }
+
+export type VisionTile = {
+  id: string
+  tag: string
+  caption: string
+  imagePath: string | null
+  sortOrder: number
+}
+
 export type EnergyLevel = 'low' | 'medium' | 'high'
 
 export type RightNow = {
