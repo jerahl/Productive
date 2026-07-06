@@ -19,15 +19,73 @@ Design rules for the surface:
 
 ## Connecting
 
-```bash
-# Claude Code
-claude mcp add --transport http beacon http://localhost:3000/mcp
+Beacon speaks MCP over two transports. **Claude Code** connects over Streamable
+HTTP to the running web server; **Claude Desktop** only speaks stdio, so it
+launches the standalone stdio bridge (`apps/server/src/mcp-stdio.ts`).
 
-# Claude Desktop (stdio bridge)
-{ "mcpServers": { "beacon": { "command": "npx", "args": ["-y", "beacon-mcp"] } } }
+```bash
+# Claude Code — server must be running (pnpm --filter @beacon/server dev)
+claude mcp add --transport http beacon http://localhost:3000/mcp
 ```
 
-`beacon-mcp` (stdio) starts the Beacon server if it isn't running, then proxies.
+### Claude Desktop (stdio)
+
+The stdio bridge is a standalone process: it opens the same SQLite file the web
+server uses (`~/.beacon/beacon.db` by default), runs migrations, and serves the
+full tool/resource/prompt surface. It does **not** start the web server. Your
+data is shared with the web app either way, but because stdio has no SSE channel,
+changes Claude makes here won't push live into an open browser tab — reload to
+see them (for the "watch it happen" demo, use the HTTP transport above).
+
+**1. Install once, from the repo root** (builds the native SQLite binding):
+
+```bash
+pnpm install
+```
+
+**2. Open Claude Desktop's config file** — Settings → Developer → *Edit Config*,
+or edit it directly:
+
+- **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
+
+**3. Add a `beacon` server** under `mcpServers`. Point `--dir` at your absolute
+path to this repo (the `pnpm --filter` script must resolve from the repo root):
+
+```jsonc
+// macOS / Linux
+{
+  "mcpServers": {
+    "beacon": {
+      "command": "pnpm",
+      "args": ["--dir", "/absolute/path/to/Productive", "--filter", "@beacon/server", "mcp:stdio"]
+    }
+  }
+}
+```
+
+```jsonc
+// Windows — wrap in cmd so the pnpm shim resolves
+{
+  "mcpServers": {
+    "beacon": {
+      "command": "cmd",
+      "args": ["/c", "pnpm", "--dir", "C:\\absolute\\path\\to\\Productive", "--filter", "@beacon/server", "mcp:stdio"]
+    }
+  }
+}
+```
+
+To point at a different database file, add an `env` block, e.g.
+`"env": { "BEACON_DB": "/absolute/path/to/beacon.db" }`.
+
+**4. Fully quit and reopen Claude Desktop.** Beacon's tools appear under the
+🔌/tools menu. If they don't, check the logs: `~/Library/Logs/Claude/mcp-server-beacon.log`
+(macOS) or `%APPDATA%\Claude\logs\` (Windows).
+
+> **`pnpm` not found?** Claude Desktop launches with a minimal PATH and won't see
+> a shell-managed pnpm. Use an absolute path to the binary as `command` (find it
+> with `which pnpm` / `where pnpm`), or invoke it via a Node/Corepack path.
 
 ## Tools
 
