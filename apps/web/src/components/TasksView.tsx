@@ -7,6 +7,7 @@ import {
   useCreateTask,
   useCycleDue,
   useCyclePriority,
+  useDeleteTask,
   useDismiss,
   useInbox,
   useReorder,
@@ -29,6 +30,7 @@ export function TasksView() {
   const addStep = useAddStep()
   const toggleStep = useToggleStep()
   const createTask = useCreateTask()
+  const deleteTask = useDeleteTask()
   const triage = useTriage()
   const dismiss = useDismiss()
   const reorder = useReorder()
@@ -130,6 +132,7 @@ export function TasksView() {
       onToggleStep={(sid) => toggleStep.mutate({ id: task.id, sid })}
       onStartReorder={(e) => startReorder(group, task.id, e)}
       onStartFocus={() => focus.open({ taskId: task.id })}
+      onDelete={() => deleteTask.mutate(task.id)}
       projectName={task.projectId ? projectName.get(task.projectId) : null}
       onOpenProject={task.projectId ? () => nav.openProject(task.projectId as string) : undefined}
     />

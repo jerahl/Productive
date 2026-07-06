@@ -15,6 +15,7 @@ import {
   createMilestoneInput,
   createNoteInput,
   createProjectInput,
+  createRoutineInput,
   createTaskInput,
   finishFocusInput,
   newId,
@@ -157,6 +158,11 @@ export function createApp(svc: BeaconService, bus: Bus) {
     c.json(svc.toggleStep(c.req.param('id'), c.req.param('sid'))),
   )
 
+  app.delete('/api/tasks/:id', (c) => {
+    svc.deleteTask(c.req.param('id'))
+    return c.body(null, 204)
+  })
+
   app.post('/api/tasks/reorder', async (c) => {
     const { group, orderedIds } = reorderInput.parse(await c.req.json())
     svc.reorderGroup(group, orderedIds)
@@ -172,6 +178,10 @@ export function createApp(svc: BeaconService, bus: Bus) {
     c.json(svc.updateProject(c.req.param('id'), updateProjectInput.parse(await c.req.json()))),
   )
   app.get('/api/projects/:id/detail', (c) => c.json(svc.getProjectDetail(c.req.param('id'))))
+  app.delete('/api/projects/:id', (c) => {
+    svc.deleteProject(c.req.param('id'))
+    return c.body(null, 204)
+  })
 
   // --- Milestones ----------------------------------------------------------
   app.post('/api/milestones', async (c) =>
@@ -201,7 +211,11 @@ export function createApp(svc: BeaconService, bus: Bus) {
 
   // --- Routines ------------------------------------------------------------
   app.get('/api/routines', (c) => c.json(svc.listRoutines()))
+  app.post('/api/routines', async (c) =>
+    c.json(svc.createRoutine(createRoutineInput.parse(await c.req.json())), 201),
+  )
   app.post('/api/routines/:id/check', (c) => c.json(svc.toggleRoutineCheck(c.req.param('id'))))
+  app.delete('/api/routines/:id', (c) => c.json(svc.deleteRoutine(c.req.param('id'))))
 
   // --- Meetings ------------------------------------------------------------
   app.post('/api/meetings', async (c) =>

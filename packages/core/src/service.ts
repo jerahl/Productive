@@ -49,6 +49,7 @@ import type {
   CreateMilestoneInput,
   CreateNoteInput,
   CreateProjectInput,
+  CreateRoutineInput,
   CreateTaskInput,
   FinishFocusInput,
   PromoteCanvasInput,
@@ -650,6 +651,14 @@ export function createService(db: BeaconDb, emit: Emit = () => {}) {
       return { ...existing, ...patch }
     },
 
+    deleteProject(id: string): void {
+      const res = db.delete(projects).where(eq(projects.id, id)).run()
+      if (res.changes === 0) throw new NotFoundError('project', id)
+      // Milestones cascade-delete; the project's tasks survive with their
+      // project_id / milestone_id cleared by the FK (schema.ts).
+      fire('projects', 'tasks', 'overview')
+    },
+
     /** A project opened up: stats, milestones (with task counts), and its tasks. */
     getProjectDetail(id: string): ProjectDetail {
       const p = db.select().from(projects).where(eq(projects.id, id)).get()
@@ -793,6 +802,32 @@ export function createService(db: BeaconDb, emit: Emit = () => {}) {
           .map((r) => ({ id: r.id, text: r.text, done: doneSet.has(r.id) }))
         return { period, done: items.filter((i) => i.done).length, total: items.length, items }
       })
+    },
+
+    createRoutine(input: CreateRoutineInput): RoutineView[] {
+      const max = db
+        .select({ v: sql<number | null>`max(${routines.sortOrder})` })
+        .from(routines)
+        .where(eq(routines.period, input.period))
+        .get()
+      db.insert(routines)
+        .values({
+          id: newId(),
+          period: input.period,
+          text: input.text,
+          sortOrder: (max?.v ?? -1) + 1,
+        })
+        .run()
+      fire('routines', 'overview')
+      return this.listRoutines()
+    },
+
+    deleteRoutine(id: string): RoutineView[] {
+      // routine_checks cascade-delete via the FK (schema.ts).
+      const res = db.delete(routines).where(eq(routines.id, id)).run()
+      if (res.changes === 0) throw new NotFoundError('routine', id)
+      fire('routines', 'overview')
+      return this.listRoutines()
     },
 
     toggleRoutineCheck(routineId: string, date = localDate(new Date())): RoutineView[] {

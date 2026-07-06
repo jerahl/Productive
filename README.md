@@ -82,6 +82,64 @@ Other DB tasks: `pnpm db:generate` (regenerate migration SQL from the schema),
 The database lives at `~/.beacon/beacon.db` by default; set `BEACON_DB` to
 override (e.g. `BEACON_DB=./dev.db pnpm db:reset`).
 
+## Running as a Windows service
+
+On Windows, Beacon can run as background services that start on boot and
+restart on crash, wrapped with
+[`node-windows`](https://github.com/coreybutler/node-windows). There are two:
+the **backend** (REST + SSE + MCP) and the **web** client. Run either or both.
+
+First install dependencies with `pnpm install` (everything the services need
+at runtime is a regular dependency, so a production install — `--prod` or with
+`NODE_ENV=production` — works too). All commands below run from an **elevated
+(Administrator)** prompt.
+
+### Backend service (`Beacon`)
+
+Wraps the server entrypoint (`src/index.ts`) — no build step required.
+
+```bat
+rem Point the database at a stable, writable location — a service runs as
+rem LocalSystem, whose home directory is under C:\Windows.
+set BEACON_DB=C:\ProgramData\Beacon\beacon.db
+set PORT=3000
+
+pnpm --filter @beacon/server run service:install
+```
+
+This registers a service named **Beacon** and starts it. `PORT`, `BEACON_DB`,
+and `NODE_ENV` (default `production`) are captured from the install-time
+environment.
+
+### Web service (`Beacon Web`)
+
+Serves the built web client with Vite's preview server, proxying `/api` to the
+backend. **Build first** so `dist/` exists:
+
+```bat
+pnpm --filter @beacon/web build
+
+set PORT=5173
+set BEACON_API=http://localhost:3000
+
+pnpm --filter @beacon/web run service:install
+```
+
+This registers a service named **Beacon Web** and starts it. `PORT` is the port
+it listens on; `BEACON_API` is the backend it proxies `/api` to.
+
+### Managing the services
+
+Manage them from `services.msc` or with `net start` / `net stop` (quote the
+name that contains a space); wrapper logs are written next to each service
+definition. To reconfigure, uninstall and reinstall:
+
+```bat
+net stop "Beacon Web"  &  net stop Beacon
+pnpm --filter @beacon/web run service:uninstall
+pnpm --filter @beacon/server run service:uninstall
+```
+
 ## Documents
 
 - [`docs/PLAN.md`](docs/PLAN.md) — product principles, feature spec for all ten

@@ -117,6 +117,11 @@ export const createMeetingInput = z.object({
   who: z.string().optional(),
 })
 
+export const createRoutineInput = z.object({
+  period: routinePeriodSchema,
+  text: z.string().trim().min(1).max(200),
+})
+
 export const updateProjectInput = z
   .object({
     name: z.string().trim().min(1).max(200),
@@ -170,6 +175,7 @@ export type CreateGoalInput = z.infer<typeof createGoalInput>
 export type CreateNoteInput = z.infer<typeof createNoteInput>
 export type CreateDocInput = z.infer<typeof createDocInput>
 export type CreateMeetingInput = z.infer<typeof createMeetingInput>
+export type CreateRoutineInput = z.infer<typeof createRoutineInput>
 export type UpdateProjectInput = z.infer<typeof updateProjectInput>
 export type UpdateGoalInput = z.infer<typeof updateGoalInput>
 export type UpdateNoteInput = z.infer<typeof updateNoteInput>
