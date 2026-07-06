@@ -21,27 +21,36 @@ const here = dirname(fileURLToPath(import.meta.url))
 export const SERVICE_NAME = 'Beacon Web'
 
 /**
- * Environment variables forwarded from the install-time shell into the service.
- * Set these before running `service:install` to configure the deployment, e.g.
+ * The port the web service listens on: BEACON_WEB_PORT from the install-time
+ * shell if set, otherwise 5173. Deliberately NOT the generic PORT variable —
+ * the backend service is often installed from the same shell, and a shared
+ * PORT leaking between the two installs put them on each other's ports.
+ */
+export function resolvedPort() {
+  return process.env.BEACON_WEB_PORT?.trim() || '5173'
+}
+
+/** The backend the preview server proxies /api to (see vite.config.ts). */
+export function resolvedApi() {
+  return process.env.BEACON_API?.trim() || 'http://localhost:3000'
+}
+
+/**
+ * Environment variables baked into the service at install time, e.g.
  *
- *   set PORT=5173
+ *   set BEACON_WEB_PORT=5173
  *   set BEACON_API=http://localhost:3000
  *   pnpm --filter @beacon/web run service:install
  *
- * PORT is the port the web server listens on; BEACON_API is the backend the
- * preview server proxies /api requests to (see vite.config.ts).
+ * PORT and BEACON_API always get explicit values (see resolvedPort /
+ * resolvedApi) so the service never inherits a stale shell variable.
  */
 function serviceEnv() {
-  const forwarded = ['PORT', 'BEACON_API', 'NODE_ENV']
-  const env = []
-  for (const name of forwarded) {
-    const value = process.env[name]
-    if (value != null && value !== '') env.push({ name, value })
-  }
-  if (!env.some((e) => e.name === 'NODE_ENV')) {
-    env.push({ name: 'NODE_ENV', value: 'production' })
-  }
-  return env
+  return [
+    { name: 'PORT', value: resolvedPort() },
+    { name: 'BEACON_API', value: resolvedApi() },
+    { name: 'NODE_ENV', value: process.env.NODE_ENV || 'production' },
+  ]
 }
 
 /** Build the node-windows Service object for the Beacon web client. */

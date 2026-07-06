@@ -20,27 +20,47 @@ const here = dirname(fileURLToPath(import.meta.url))
 export const SERVICE_NAME = 'Beacon'
 
 /**
- * Environment variables forwarded from the install-time shell into the service.
- * Set these before running `service:install` to configure the deployment, e.g.
+ * Where the service's database lives: BEACON_DB from the install-time shell if
+ * set (note: `set X=Y` is cmd.exe syntax; in PowerShell use `$env:X = "Y"`),
+ * otherwise %ProgramData%\Beacon\beacon.db. A service runs as LocalSystem,
+ * whose home directory is under C:\Windows — defaulting there would bury the
+ * database in C:\Windows\system32\config\systemprofile\.beacon, invisible to
+ * every other process that uses the normal default.
+ */
+export function resolvedDbPath() {
+  const configured = process.env.BEACON_DB?.trim()
+  if (configured) return configured
+  const programData = process.env.ProgramData || 'C:\\ProgramData'
+  return join(programData, 'Beacon', 'beacon.db')
+}
+
+/**
+ * The port the backend service listens on: BEACON_PORT from the install-time
+ * shell if set, otherwise 3000. Deliberately NOT the generic PORT variable —
+ * the web service's install instructions also use PORT, and a value left over
+ * in the same shell would silently move the backend onto the web port.
+ */
+export function resolvedPort() {
+  return process.env.BEACON_PORT?.trim() || '3000'
+}
+
+/**
+ * Environment variables baked into the service at install time, e.g.
  *
+ *   set BEACON_PORT=3000
  *   set BEACON_DB=C:\ProgramData\Beacon\beacon.db
- *   set PORT=3000
  *   pnpm --filter @beacon/server run service:install
  *
- * A service runs as LocalSystem by default, whose home directory is under
- * C:\Windows — so pointing BEACON_DB at a stable, writable location such as
- * C:\ProgramData\Beacon is strongly recommended.
+ * PORT and BEACON_DB always get explicit values (see resolvedPort /
+ * resolvedDbPath) so the service never inherits a stale shell variable or
+ * falls back to LocalSystem's home directory.
  */
 function serviceEnv() {
-  const forwarded = ['PORT', 'BEACON_DB', 'NODE_ENV']
-  const env = []
-  for (const name of forwarded) {
-    const value = process.env[name]
-    if (value != null && value !== '') env.push({ name, value })
-  }
-  if (!env.some((e) => e.name === 'NODE_ENV')) {
-    env.push({ name: 'NODE_ENV', value: 'production' })
-  }
+  const env = [
+    { name: 'PORT', value: resolvedPort() },
+    { name: 'BEACON_DB', value: resolvedDbPath() },
+    { name: 'NODE_ENV', value: process.env.NODE_ENV || 'production' },
+  ]
   return env
 }
 

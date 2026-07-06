@@ -12,6 +12,19 @@ import { z } from 'zod'
 export const MCP_SERVER_NAME = 'beacon'
 const VERSION = '0.1.0'
 
+/**
+ * How this server instance is deployed — surfaced by the `get_status` tool so a
+ * client (or a confused user) can tell which SQLite file the tools operate on
+ * and whether mutations stream live to the open browser.
+ */
+export type BeaconServerInfo = {
+  /** Resolved path of the SQLite file this server reads and writes. */
+  dbPath?: string
+  transport?: 'http' | 'stdio'
+  /** True when mutations reach the web UI's SSE stream (HTTP transport only). */
+  liveUpdates?: boolean
+}
+
 type ToolResult = {
   content: { type: 'text'; text: string }[]
   structuredContent?: Record<string, unknown>
@@ -47,7 +60,7 @@ const energyEnum = z.enum(ENERGY_LEVELS)
  * the shared @beacon/core service, so MCP and REST never diverge and — because
  * the service emits events — Claude's changes appear live in the open browser.
  */
-export function createBeaconMcpServer(svc: BeaconService): McpServer {
+export function createBeaconMcpServer(svc: BeaconService, info: BeaconServerInfo = {}): McpServer {
   const server = new McpServer(
     { name: MCP_SERVER_NAME, version: VERSION },
     {
@@ -350,6 +363,39 @@ export function createBeaconMcpServer(svc: BeaconService): McpServer {
       const today = svc.listTaskGroups().find((g) => g.key === 'today')
       const open = (today?.tasks ?? []).filter((t) => !t.done).map(compact)
       return ok(`Today's plan: ${open.length} open task(s).`, { tasks: open })
+    },
+  )
+
+  server.registerTool(
+    'get_status',
+    {
+      title: 'Server status',
+      description:
+        'Which SQLite database this server reads and writes, over which transport, and whether ' +
+        'changes stream live to the open browser. Call this when an update seems to succeed but ' +
+        'does not show up in the web app — a mismatched database path is the usual culprit.',
+      annotations: { readOnlyHint: true, idempotentHint: true },
+    },
+    async () => {
+      const openTasks = svc
+        .listTaskGroups()
+        .reduce((n, g) => n + g.tasks.filter((t) => !t.done).length, 0)
+      const inboxItems = svc.listInbox().length
+      const status = {
+        server: MCP_SERVER_NAME,
+        version: VERSION,
+        transport: info.transport ?? 'unknown',
+        dbPath: info.dbPath ?? 'unknown',
+        liveUpdates: info.liveUpdates ?? false,
+        openTasks,
+        inboxItems,
+      }
+      return ok(
+        `beacon ${VERSION} · transport: ${status.transport} · db: ${status.dbPath} · live ` +
+          `updates: ${status.liveUpdates ? 'on' : 'off (refresh the browser to see changes)'} · ` +
+          `${openTasks} open task(s), ${inboxItems} inbox item(s).`,
+        { status },
+      )
     },
   )
 

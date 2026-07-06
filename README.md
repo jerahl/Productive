@@ -44,10 +44,19 @@ With the server running (`pnpm --filter @beacon/server dev`):
 claude mcp add --transport http beacon http://localhost:3000/mcp
 ```
 
-For a stdio client (e.g. Claude Desktop), run `pnpm --filter @beacon/server mcp:stdio`,
-or point the client at that command. The stdio bridge shares the same SQLite
-database; use the HTTP transport when you want changes to appear live in an open
-browser. The full tool/resource/prompt catalog is in `docs/MCP_SERVER.md`.
+Claude Desktop can use the same HTTP endpoint — add it as a custom connector
+(Settings → Connectors → `http://localhost:3000/mcp`) or via the `mcp-remote`
+bridge; see [`docs/MCP_SERVER.md`](docs/MCP_SERVER.md#connecting) for both
+configs. Prefer HTTP: it always hits the same database as the web UI and
+changes stream live to the open browser.
+
+For a client that must use stdio, run `pnpm --filter @beacon/server mcp:stdio`,
+or point the client at that command. The stdio bridge resolves `BEACON_DB` from
+**its own** environment (default `~/.beacon/beacon.db`) — set it to the same path
+the web server uses, or the two silently operate on different databases. Ask
+Claude to call the `get_status` tool to see which database it's connected to.
+Stdio changes also don't stream to the browser. The full tool/resource/prompt
+catalog is in `docs/MCP_SERVER.md`.
 
 ## Repository layout
 
@@ -99,17 +108,17 @@ at runtime is a regular dependency, so a production install — `--prod` or with
 Wraps the server entrypoint (`src/index.ts`) — no build step required.
 
 ```bat
-rem Point the database at a stable, writable location — a service runs as
-rem LocalSystem, whose home directory is under C:\Windows.
-set BEACON_DB=C:\ProgramData\Beacon\beacon.db
-set PORT=3000
-
 pnpm --filter @beacon/server run service:install
 ```
 
-This registers a service named **Beacon** and starts it. `PORT`, `BEACON_DB`,
-and `NODE_ENV` (default `production`) are captured from the install-time
-environment.
+This registers a service named **Beacon** and starts it, listening on port
+**3000** with the database at `%ProgramData%\Beacon\beacon.db`. The installer
+always bakes explicit values into the service — the port never inherits a
+stray `PORT` left in the shell (e.g. from a web-service install), and the
+database never falls back to LocalSystem's home directory (which is buried
+under `C:\Windows\system32`). To override, set `BEACON_PORT` and/or
+`BEACON_DB` before installing. Note that `set X=Y` is **cmd.exe** syntax; in
+PowerShell use `$env:BEACON_PORT = "3000"`.
 
 ### Web service (`Beacon Web`)
 
@@ -119,14 +128,13 @@ backend. **Build first** so `dist/` exists:
 ```bat
 pnpm --filter @beacon/web build
 
-set PORT=5173
-set BEACON_API=http://localhost:3000
-
 pnpm --filter @beacon/web run service:install
 ```
 
-This registers a service named **Beacon Web** and starts it. `PORT` is the port
-it listens on; `BEACON_API` is the backend it proxies `/api` to.
+This registers a service named **Beacon Web** and starts it, listening on port
+**5173** and proxying `/api` to `http://localhost:3000`. To override, set
+`BEACON_WEB_PORT` and/or `BEACON_API` before installing (again baked in
+explicitly — a leftover shell variable can't change the port).
 
 ### Managing the services
 

@@ -30,7 +30,7 @@ const svc = createService(db, bus.emit)
 
 const app = createApp(svc, bus)
 const honoListener = getRequestListener(app.fetch)
-const mcpHandler = createMcpHandler(svc, bus)
+const mcpHandler = createMcpHandler(svc, bus, path)
 
 // Route the MCP Streamable HTTP endpoint to the SDK transport (raw Node req/res),
 // and everything else — REST + SSE — to Hono.
