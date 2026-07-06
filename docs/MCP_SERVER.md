@@ -29,6 +29,16 @@ claude mcp add --transport http beacon http://localhost:3000/mcp
 
 `beacon-mcp` (stdio) starts the Beacon server if it isn't running, then proxies.
 
+> **Stdio and the database path.** The stdio bridge is a separate process: it
+> resolves `BEACON_DB` from *its own* environment and falls back to
+> `~/.beacon/beacon.db`. If the web server was started with a different
+> `BEACON_DB` (e.g. the Windows service uses `C:\ProgramData\Beacon\beacon.db`),
+> the bridge silently operates on a different database and Claude's changes never
+> appear in the web app. Set the same `BEACON_DB` in the MCP client's `env`
+> block, and verify with the `get_status` tool — it reports the resolved path.
+> Stdio mutations also don't reach the browser's SSE stream, so refresh the page
+> to see them; prefer the HTTP transport for live updates.
+
 ## Tools
 
 ### Capture & triage
@@ -67,6 +77,7 @@ claude mcp add --transport http beacon http://localhost:3000/mcp
 | `get_overview` | — | Everything on the Overview screen: right-now suggestion, today stats, energy, streak, next meeting, inbox count. The first call Claude should make in most conversations. |
 | `plan_my_day` | `top_task_ids?` | Reorder today; returns the resulting plan. Used by the `daily-triage` prompt. |
 | `weekly_review` | — | Read-only digest: completed this week, focus minutes, stale Someday items, inbox leftovers, goal/project deltas. |
+| `get_status` | — | Diagnostics: the resolved SQLite path this server operates on, the transport (`http`/`stdio`), whether changes stream live to the browser, and open task / inbox counts. Call it when an update "succeeds" but doesn't show in the web app. |
 
 ### Projects, goals, routines, meetings
 

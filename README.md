@@ -45,9 +45,13 @@ claude mcp add --transport http beacon http://localhost:3000/mcp
 ```
 
 For a stdio client (e.g. Claude Desktop), run `pnpm --filter @beacon/server mcp:stdio`,
-or point the client at that command. The stdio bridge shares the same SQLite
-database; use the HTTP transport when you want changes to appear live in an open
-browser. The full tool/resource/prompt catalog is in `docs/MCP_SERVER.md`.
+or point the client at that command. The stdio bridge resolves `BEACON_DB` from
+**its own** environment (default `~/.beacon/beacon.db`) — set it to the same path
+the web server uses, or the two silently operate on different databases. Ask
+Claude to call the `get_status` tool to see which database it's connected to.
+Stdio changes also don't stream to the browser, so use the HTTP transport when
+you want changes to appear live in an open browser. The full tool/resource/prompt
+catalog is in `docs/MCP_SERVER.md`.
 
 ## Repository layout
 

@@ -12,14 +12,17 @@ import { migrationsDir, resolveDbPath } from './env.ts'
  * for the "watch it happen" demo use the HTTP transport at /mcp instead.
  */
 async function main() {
-  const { db } = openDb(resolveDbPath())
+  const dbPath = resolveDbPath()
+  const { db } = openDb(dbPath)
   migrate(db, { migrationsFolder: migrationsDir() })
   const svc = createService(db) // no emit: stdio is a standalone process
-  const server = createBeaconMcpServer(svc)
+  const server = createBeaconMcpServer(svc, { dbPath, transport: 'stdio', liveUpdates: false })
   const transport = new StdioServerTransport()
   await server.connect(transport)
-  // stderr is safe for logs; stdout is the MCP channel.
-  console.error('beacon-mcp (stdio) ready')
+  // stderr is safe for logs; stdout is the MCP channel. Log the resolved DB path
+  // so a client writing to the "wrong" database is diagnosable from the log —
+  // the web server must use the same file (set BEACON_DB to match it).
+  console.error(`beacon-mcp (stdio) ready — db: ${dbPath} (no live browser updates on stdio)`)
 }
 
 main().catch((err) => {

@@ -23,7 +23,7 @@ function eventUris(event: BeaconEvent): string[] {
  * changes (from REST or from another MCP client) fire resource-updated
  * notifications to subscribed MCP clients.
  */
-export function createMcpHandler(svc: BeaconService, bus: Bus) {
+export function createMcpHandler(svc: BeaconService, bus: Bus, dbPath: string) {
   const transports = new Map<string, StreamableHTTPServerTransport>()
 
   return async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
@@ -40,7 +40,7 @@ export function createMcpHandler(svc: BeaconService, bus: Bus) {
               transports.set(sid, created)
             },
           })
-          const mcp = createBeaconMcpServer(svc)
+          const mcp = createBeaconMcpServer(svc, { dbPath, transport: 'http', liveUpdates: true })
           const unsubscribe = bus.subscribe((event) => {
             for (const uri of eventUris(event)) {
               mcp.server.sendResourceUpdated({ uri }).catch(() => {})
