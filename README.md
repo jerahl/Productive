@@ -89,8 +89,9 @@ restart on crash, wrapped with
 [`node-windows`](https://github.com/coreybutler/node-windows). There are two:
 the **backend** (REST + SSE + MCP) and the **web** client. Run either or both.
 
-First install dependencies (`pnpm install`, which includes the dev
-dependencies the services use). All commands below run from an **elevated
+First install dependencies with `pnpm install` (everything the services need
+at runtime is a regular dependency, so a production install — `--prod` or with
+`NODE_ENV=production` — works too). All commands below run from an **elevated
 (Administrator)** prompt.
 
 ### Backend service (`Beacon`)
