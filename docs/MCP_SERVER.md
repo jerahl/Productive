@@ -19,20 +19,70 @@ Design rules for the surface:
 
 ## Connecting
 
-```bash
-# Claude Code
-claude mcp add --transport http beacon http://localhost:3000/mcp
+Prefer the **HTTP transport** (`http://localhost:3000/mcp`) wherever the client
+supports it: it runs inside the server process, so it always operates on the
+same database as the web UI and its changes stream live to the open browser.
+The stdio bridge is a fallback for clients that can't reach an HTTP endpoint.
 
-# Claude Desktop (stdio bridge)
-{ "mcpServers": { "beacon": { "command": "npx", "args": ["-y", "beacon-mcp"] } } }
+### Claude Code
+
+```bash
+claude mcp add --transport http beacon http://localhost:3000/mcp
 ```
 
-`beacon-mcp` (stdio) starts the Beacon server if it isn't running, then proxies.
+### Claude Desktop — HTTP transport (recommended)
+
+The Beacon server (or Windows service) must be running. Then either:
+
+**Custom connector (no config file):** Settings → **Connectors** → **Add custom
+connector**, name it `Beacon`, and enter `http://localhost:3000/mcp`.
+
+**`mcp-remote` bridge (works on any plan):** Claude Desktop launches stdio
+commands from its config file, so use the `mcp-remote` package to proxy stdio
+to the HTTP endpoint. Open Settings → **Developer** → **Edit Config** (the file
+is `%APPDATA%\Claude\claude_desktop_config.json` on Windows,
+`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS) and
+add:
+
+```json
+{
+  "mcpServers": {
+    "beacon": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "http://localhost:3000/mcp", "--allow-http"]
+    }
+  }
+}
+```
+
+(`--allow-http` is needed because `mcp-remote` refuses plain-HTTP URLs by
+default; it's fine for localhost.) Fully restart Claude Desktop — on Windows,
+quit it from the system tray, don't just close the window.
+
+**Verify** by asking Claude to call `get_status`: it should report
+`transport: http`, the same database path the server logs at startup, and
+`live updates: on`.
+
+### Claude Desktop — stdio bridge (fallback)
+
+Point the client at the `mcp:stdio` entrypoint and set `BEACON_DB` explicitly:
+
+```json
+{
+  "mcpServers": {
+    "beacon": {
+      "command": "npx",
+      "args": ["-y", "tsx", "C:\\path\\to\\Productive\\apps\\server\\src\\mcp-stdio.ts"],
+      "env": { "BEACON_DB": "C:\\ProgramData\\Beacon\\beacon.db" }
+    }
+  }
+}
+```
 
 > **Stdio and the database path.** The stdio bridge is a separate process: it
 > resolves `BEACON_DB` from *its own* environment and falls back to
 > `~/.beacon/beacon.db`. If the web server was started with a different
-> `BEACON_DB` (e.g. the Windows service uses `C:\ProgramData\Beacon\beacon.db`),
+> `BEACON_DB` (the Windows service defaults to `C:\ProgramData\Beacon\beacon.db`),
 > the bridge silently operates on a different database and Claude's changes never
 > appear in the web app. Set the same `BEACON_DB` in the MCP client's `env`
 > block, and verify with the `get_status` tool — it reports the resolved path.

@@ -44,13 +44,18 @@ With the server running (`pnpm --filter @beacon/server dev`):
 claude mcp add --transport http beacon http://localhost:3000/mcp
 ```
 
-For a stdio client (e.g. Claude Desktop), run `pnpm --filter @beacon/server mcp:stdio`,
+Claude Desktop can use the same HTTP endpoint — add it as a custom connector
+(Settings → Connectors → `http://localhost:3000/mcp`) or via the `mcp-remote`
+bridge; see [`docs/MCP_SERVER.md`](docs/MCP_SERVER.md#connecting) for both
+configs. Prefer HTTP: it always hits the same database as the web UI and
+changes stream live to the open browser.
+
+For a client that must use stdio, run `pnpm --filter @beacon/server mcp:stdio`,
 or point the client at that command. The stdio bridge resolves `BEACON_DB` from
 **its own** environment (default `~/.beacon/beacon.db`) — set it to the same path
 the web server uses, or the two silently operate on different databases. Ask
 Claude to call the `get_status` tool to see which database it's connected to.
-Stdio changes also don't stream to the browser, so use the HTTP transport when
-you want changes to appear live in an open browser. The full tool/resource/prompt
+Stdio changes also don't stream to the browser. The full tool/resource/prompt
 catalog is in `docs/MCP_SERVER.md`.
 
 ## Repository layout
