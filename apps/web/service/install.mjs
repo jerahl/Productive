@@ -10,12 +10,14 @@
  * BEACON_API). After install, manage it from services.msc or with
  * `net start "Beacon Web"` / `net stop "Beacon Web"`.
  */
-import { SERVICE_NAME, createBeaconWebService } from './service.mjs'
+import { SERVICE_NAME, createBeaconWebService, resolvedApi, resolvedPort } from './service.mjs'
 
 const svc = createBeaconWebService()
 
 svc.on('install', () => {
-  console.log(`✓ "${SERVICE_NAME}" service installed. Starting…`)
+  console.log(
+    `✓ "${SERVICE_NAME}" service installed (port: ${resolvedPort()}, api: ${resolvedApi()}). Starting…`,
+  )
   svc.start()
 })
 

@@ -35,26 +35,32 @@ export function resolvedDbPath() {
 }
 
 /**
- * Environment variables forwarded from the install-time shell into the service.
- * Set these before running `service:install` to configure the deployment, e.g.
+ * The port the backend service listens on: BEACON_PORT from the install-time
+ * shell if set, otherwise 3000. Deliberately NOT the generic PORT variable —
+ * the web service's install instructions also use PORT, and a value left over
+ * in the same shell would silently move the backend onto the web port.
+ */
+export function resolvedPort() {
+  return process.env.BEACON_PORT?.trim() || '3000'
+}
+
+/**
+ * Environment variables baked into the service at install time, e.g.
  *
+ *   set BEACON_PORT=3000
  *   set BEACON_DB=C:\ProgramData\Beacon\beacon.db
- *   set PORT=3000
  *   pnpm --filter @beacon/server run service:install
  *
- * BEACON_DB always gets an explicit value (see resolvedDbPath) so the service
- * never falls back to LocalSystem's home directory.
+ * PORT and BEACON_DB always get explicit values (see resolvedPort /
+ * resolvedDbPath) so the service never inherits a stale shell variable or
+ * falls back to LocalSystem's home directory.
  */
 function serviceEnv() {
-  const forwarded = ['PORT', 'NODE_ENV']
-  const env = [{ name: 'BEACON_DB', value: resolvedDbPath() }]
-  for (const name of forwarded) {
-    const value = process.env[name]
-    if (value != null && value !== '') env.push({ name, value })
-  }
-  if (!env.some((e) => e.name === 'NODE_ENV')) {
-    env.push({ name: 'NODE_ENV', value: 'production' })
-  }
+  const env = [
+    { name: 'PORT', value: resolvedPort() },
+    { name: 'BEACON_DB', value: resolvedDbPath() },
+    { name: 'NODE_ENV', value: process.env.NODE_ENV || 'production' },
+  ]
   return env
 }
 

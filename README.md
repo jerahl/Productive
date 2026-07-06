@@ -108,19 +108,17 @@ at runtime is a regular dependency, so a production install — `--prod` or with
 Wraps the server entrypoint (`src/index.ts`) — no build step required.
 
 ```bat
-set PORT=3000
-
 pnpm --filter @beacon/server run service:install
 ```
 
-This registers a service named **Beacon** and starts it. `PORT`, `BEACON_DB`,
-and `NODE_ENV` (default `production`) are captured from the install-time
-environment. The database defaults to `%ProgramData%\Beacon\beacon.db` — the
-installer always bakes an explicit `BEACON_DB` into the service so it never
-falls back to LocalSystem's home directory (which is buried under
-`C:\Windows\system32`). Set `BEACON_DB` before installing only to use a
-different location. Note the `set X=Y` syntax above is for **cmd.exe**; in
-PowerShell use `$env:PORT = "3000"`.
+This registers a service named **Beacon** and starts it, listening on port
+**3000** with the database at `%ProgramData%\Beacon\beacon.db`. The installer
+always bakes explicit values into the service — the port never inherits a
+stray `PORT` left in the shell (e.g. from a web-service install), and the
+database never falls back to LocalSystem's home directory (which is buried
+under `C:\Windows\system32`). To override, set `BEACON_PORT` and/or
+`BEACON_DB` before installing. Note that `set X=Y` is **cmd.exe** syntax; in
+PowerShell use `$env:BEACON_PORT = "3000"`.
 
 ### Web service (`Beacon Web`)
 
@@ -130,14 +128,13 @@ backend. **Build first** so `dist/` exists:
 ```bat
 pnpm --filter @beacon/web build
 
-set PORT=5173
-set BEACON_API=http://localhost:3000
-
 pnpm --filter @beacon/web run service:install
 ```
 
-This registers a service named **Beacon Web** and starts it. `PORT` is the port
-it listens on; `BEACON_API` is the backend it proxies `/api` to.
+This registers a service named **Beacon Web** and starts it, listening on port
+**5173** and proxying `/api` to `http://localhost:3000`. To override, set
+`BEACON_WEB_PORT` and/or `BEACON_API` before installing (again baked in
+explicitly — a leftover shell variable can't change the port).
 
 ### Managing the services
 
