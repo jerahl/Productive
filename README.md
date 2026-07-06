@@ -82,6 +82,37 @@ Other DB tasks: `pnpm db:generate` (regenerate migration SQL from the schema),
 The database lives at `~/.beacon/beacon.db` by default; set `BEACON_DB` to
 override (e.g. `BEACON_DB=./dev.db pnpm db:reset`).
 
+## Running as a Windows service
+
+On Windows, Beacon can run as a background service that starts on boot and
+restarts on crash. It wraps the same server entrypoint (`src/index.ts`) with
+[`node-windows`](https://github.com/coreybutler/node-windows) — no build step
+required.
+
+First install dependencies (`pnpm install`, which includes the dev
+dependencies the service uses). Then, from an **elevated (Administrator)**
+prompt, optionally set configuration and install:
+
+```bat
+rem Point the database at a stable, writable location — a service runs as
+rem LocalSystem, whose home directory is under C:\Windows.
+set BEACON_DB=C:\ProgramData\Beacon\beacon.db
+set PORT=3000
+
+pnpm --filter @beacon/server run service:install
+```
+
+This registers a service named **Beacon** and starts it. Manage it from
+`services.msc` or with `net start Beacon` / `net stop Beacon`; wrapper logs are
+written next to the service definition. `PORT`, `BEACON_DB`, and `NODE_ENV`
+(default `production`) are captured from the install-time environment.
+
+To reconfigure, uninstall and reinstall:
+
+```bat
+pnpm --filter @beacon/server run service:uninstall
+```
+
 ## Documents
 
 - [`docs/PLAN.md`](docs/PLAN.md) — product principles, feature spec for all ten
