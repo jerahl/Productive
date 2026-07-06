@@ -63,6 +63,11 @@ function useProjectMutation<A, R>(fn: (arg: A) => Promise<R>) {
   })
 }
 
+export const useCreateProject = () =>
+  useProjectMutation((data: { name: string; color: string; dueLabel?: string }) =>
+    api.createProject(data),
+  )
+export const useDeleteProject = () => useProjectMutation((id: string) => api.deleteProject(id))
 export const useCreateMilestone = () =>
   useProjectMutation((v: { projectId: string; title: string }) =>
     api.createMilestone(v.projectId, v.title),
@@ -87,17 +92,34 @@ export const useUpdateTask = () =>
       api.updateTask(v.id, { milestoneId: v.milestoneId, done: v.done, due: v.due }),
   )
 
-/** Mutation that refreshes a single query key on success. */
-function useKeyMutation<A, R>(fn: (arg: A) => Promise<R>, key: string) {
+/** Mutation that refreshes one or more query keys on success. */
+function useKeyMutation<A, R>(fn: (arg: A) => Promise<R>, key: string | string[]) {
   const qc = useQueryClient()
+  const keys = Array.isArray(key) ? key : [key]
   return useMutation({
     mutationFn: fn,
-    onSuccess: () => qc.invalidateQueries({ queryKey: [key] }),
+    onSuccess: () => {
+      for (const k of keys) qc.invalidateQueries({ queryKey: [k] })
+    },
   })
 }
 
 export const useCheckRoutine = () =>
   useKeyMutation((id: string) => api.checkRoutine(id), 'routines')
+export const useCreateRoutine = () =>
+  useKeyMutation(
+    (data: { period: 'morning' | 'evening'; text: string }) => api.createRoutine(data),
+    ['routines', 'overview'],
+  )
+export const useDeleteRoutine = () =>
+  useKeyMutation((id: string) => api.deleteRoutine(id), ['routines', 'overview'])
+export const useCreateMeeting = () =>
+  useKeyMutation(
+    (data: { title: string; startsAt: string; who?: string }) => api.createMeeting(data),
+    ['meetings', 'overview'],
+  )
+export const useDeleteMeeting = () =>
+  useKeyMutation((id: string) => api.deleteMeeting(id), ['meetings', 'overview'])
 export const useCreateNote = () =>
   useKeyMutation((data: { text: string; color?: string | null }) => api.createNote(data), 'notes')
 export const useUpdateNote = () =>
@@ -172,6 +194,11 @@ export function useCreateTask() {
 export function useToggleTask() {
   const invalidate = useInvalidate()
   return useMutation({ mutationFn: (id: string) => api.toggleTask(id), onSuccess: invalidate })
+}
+
+export function useDeleteTask() {
+  const invalidate = useInvalidate()
+  return useMutation({ mutationFn: (id: string) => api.deleteTask(id), onSuccess: invalidate })
 }
 
 export function useCycleDue() {

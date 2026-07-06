@@ -13,6 +13,7 @@ import type {
   Milestone,
   Note,
   Overview,
+  Project,
   ProjectDetail,
   ProjectStats,
   RoutineView,
@@ -41,6 +42,9 @@ export const api = {
   getInbox: () => req<InboxItem[]>('/inbox'),
   getProjects: () => req<ProjectStats[]>('/projects'),
   getProjectDetail: (id: string) => req<ProjectDetail>(`/projects/${id}/detail`),
+  createProject: (data: { name: string; color: string; dueLabel?: string }) =>
+    req<Project>('/projects', body(data)),
+  deleteProject: (id: string) => req<void>(`/projects/${id}`, { method: 'DELETE' }),
   createMilestone: (projectId: string, title: string) =>
     req<Milestone>('/milestones', body({ projectId, title })),
   updateMilestone: (id: string, data: { title?: string; done?: boolean }) =>
@@ -55,7 +59,13 @@ export const api = {
     req<Goal>(`/goals/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   deleteGoal: (id: string) => req<void>(`/goals/${id}`, { method: 'DELETE' }),
   getRoutines: () => req<RoutineView[]>('/routines'),
+  createRoutine: (data: { period: 'morning' | 'evening'; text: string }) =>
+    req<RoutineView[]>('/routines', body(data)),
+  deleteRoutine: (id: string) => req<RoutineView[]>(`/routines/${id}`, { method: 'DELETE' }),
   getMeetings: () => req<Meeting[]>('/meetings'),
+  createMeeting: (data: { title: string; startsAt: string; who?: string }) =>
+    req<Meeting>('/meetings', body(data)),
+  deleteMeeting: (id: string) => req<void>(`/meetings/${id}`, { method: 'DELETE' }),
   getDocs: () => req<DocMeta[]>('/docs'),
   getDoc: (id: string) => req<Doc>(`/docs/${id}`),
   getNotes: () => req<Note[]>('/notes'),
@@ -127,6 +137,7 @@ export const api = {
       milestoneId?: string | null
     },
   ) => req<Task>(`/tasks/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteTask: (id: string) => req<void>(`/tasks/${id}`, { method: 'DELETE' }),
   toggleTask: (id: string) => req<Task>(`/tasks/${id}/toggle`, { method: 'POST' }),
   cycleDue: (id: string) => req<Task>(`/tasks/${id}/cycle-due`, { method: 'POST' }),
   cyclePriority: (id: string) => req<Task>(`/tasks/${id}/cycle-priority`, { method: 'POST' }),

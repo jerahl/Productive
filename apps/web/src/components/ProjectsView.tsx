@@ -1,15 +1,29 @@
+import { useState } from 'react'
 import { MONO } from '../lib/format.ts'
-import { useProjects } from '../lib/queries.ts'
+import { useCreateProject, useDeleteProject, useProjects } from '../lib/queries.ts'
 import { useNav } from '../nav/NavContext.tsx'
 import { ProjectDetailView } from './ProjectDetailView.tsx'
 import { ViewHeader } from './ViewHeader.tsx'
 
+// Cycle project accent colors so new projects don't all look alike.
+const PALETTE = ['#7c8cff', '#5ec98a', '#e0a05a', '#e07a8a', '#5ec9c9', '#b78cff']
+
 export function ProjectsView() {
   const { data: projects = [], isLoading } = useProjects()
+  const createProject = useCreateProject()
+  const deleteProject = useDeleteProject()
   const nav = useNav()
+  const [draft, setDraft] = useState('')
 
   if (nav.projectFocus) {
     return <ProjectDetailView id={nav.projectFocus} onBack={nav.clearProjectFocus} />
+  }
+
+  const addProject = () => {
+    const name = draft.trim()
+    if (!name) return
+    createProject.mutate({ name, color: PALETTE[projects.length % PALETTE.length] as string })
+    setDraft('')
   }
 
   return (
@@ -18,6 +32,36 @@ export function ProjectsView() {
         title="Projects"
         subtitle="A few active streams. Open one to see its milestones and tasks."
       />
+      <div
+        style={{
+          display: 'flex',
+          gap: 8,
+          marginBottom: 18,
+          background: 'rgba(255,255,255,0.04)',
+          border: '1px solid rgba(255,255,255,0.09)',
+          borderRadius: 12,
+          padding: '8px 9px 8px 14px',
+        }}
+      >
+        <input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') addProject()
+          }}
+          placeholder="Name a project, press Enter"
+          style={{
+            flex: 1,
+            minWidth: 0,
+            background: 'transparent',
+            border: 'none',
+            outline: 'none',
+            color: '#e8eaf0',
+            fontFamily: "'Hanken Grotesk', sans-serif",
+            fontSize: 13.5,
+          }}
+        />
+      </div>
       {isLoading ? (
         <div style={{ color: 'rgba(232,234,240,0.5)', fontSize: 13 }}>Loading…</div>
       ) : (
@@ -65,6 +109,22 @@ export function ProjectsView() {
                 </div>
                 <span style={{ font: `500 13px ${MONO}`, color: 'rgba(232,234,240,0.6)' }}>
                   {p.pct}%
+                </span>
+                <span
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    deleteProject.mutate(p.id)
+                  }}
+                  title="Delete project (tasks are kept)"
+                  style={{
+                    fontSize: 15,
+                    color: 'rgba(232,234,240,0.3)',
+                    cursor: 'pointer',
+                    lineHeight: 1,
+                    flex: 'none',
+                  }}
+                >
+                  ×
                 </span>
               </div>
               <div

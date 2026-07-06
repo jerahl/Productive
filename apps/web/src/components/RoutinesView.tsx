@@ -1,12 +1,21 @@
+import { useState } from 'react'
 import { MONO } from '../lib/format.ts'
-import { useCheckRoutine, useRoutines } from '../lib/queries.ts'
+import { useCheckRoutine, useCreateRoutine, useDeleteRoutine, useRoutines } from '../lib/queries.ts'
 import type { RoutineView } from '../lib/types.ts'
 import { ViewHeader } from './ViewHeader.tsx'
 
 function RoutineCard({
   routine,
   onToggle,
-}: { routine: RoutineView; onToggle: (id: string) => void }) {
+  onAdd,
+  onDelete,
+}: {
+  routine: RoutineView
+  onToggle: (id: string) => void
+  onAdd: (period: 'morning' | 'evening', text: string) => void
+  onDelete: (id: string) => void
+}) {
+  const [draft, setDraft] = useState('')
   const pct = routine.total > 0 ? Math.round((routine.done / routine.total) * 100) : 0
   const label = routine.period === 'morning' ? 'Morning' : 'Evening'
   return (
@@ -103,6 +112,7 @@ function RoutineCard({
           )}
           <span
             style={{
+              flex: 1,
               fontSize: 14,
               ...(item.done
                 ? { textDecoration: 'line-through', color: 'rgba(232,234,240,0.4)' }
@@ -111,8 +121,56 @@ function RoutineCard({
           >
             {item.text}
           </span>
+          <span
+            onClick={(e) => {
+              e.stopPropagation()
+              onDelete(item.id)
+            }}
+            title="Delete routine step"
+            style={{
+              fontSize: 15,
+              color: 'rgba(232,234,240,0.3)',
+              cursor: 'pointer',
+              flex: 'none',
+              lineHeight: 1,
+            }}
+          >
+            ×
+          </span>
         </div>
       ))}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0' }}>
+        <span
+          style={{
+            width: 20,
+            height: 20,
+            borderRadius: 7,
+            flex: 'none',
+            border: '1.5px dashed rgba(255,255,255,0.2)',
+          }}
+        />
+        <input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            const v = draft.trim()
+            if (e.key === 'Enter' && v) {
+              onAdd(routine.period, v)
+              setDraft('')
+            }
+          }}
+          placeholder={`Add a ${label.toLowerCase()} step, press Enter`}
+          style={{
+            flex: 1,
+            background: 'transparent',
+            border: 'none',
+            outline: 'none',
+            color: '#e8eaf0',
+            fontFamily: "'Hanken Grotesk', sans-serif",
+            fontSize: 14,
+          }}
+        />
+      </div>
     </div>
   )
 }
@@ -120,6 +178,8 @@ function RoutineCard({
 export function RoutinesView() {
   const { data: routines = [] } = useRoutines()
   const check = useCheckRoutine()
+  const createRoutine = useCreateRoutine()
+  const deleteRoutine = useDeleteRoutine()
   return (
     <div className="view">
       <ViewHeader
@@ -134,7 +194,13 @@ export function RoutinesView() {
         }}
       >
         {routines.map((r) => (
-          <RoutineCard key={r.period} routine={r} onToggle={(id) => check.mutate(id)} />
+          <RoutineCard
+            key={r.period}
+            routine={r}
+            onToggle={(id) => check.mutate(id)}
+            onAdd={(period, text) => createRoutine.mutate({ period, text })}
+            onDelete={(id) => deleteRoutine.mutate(id)}
+          />
         ))}
       </div>
     </div>

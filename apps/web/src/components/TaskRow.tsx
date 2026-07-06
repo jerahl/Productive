@@ -13,6 +13,7 @@ type Props = {
   onToggleStep: (stepId: string) => void
   onStartReorder: (e: MouseEvent) => void
   onStartFocus: () => void
+  onDelete?: () => void
   projectName?: string | null
   onOpenProject?: () => void
 }
@@ -28,6 +29,7 @@ export function TaskRow({
   onToggleStep,
   onStartReorder,
   onStartFocus,
+  onDelete,
   projectName,
   onOpenProject,
 }: Props) {
@@ -250,6 +252,23 @@ export function TaskRow({
           >
             {task.steps.length > 0 ? `steps ${doneSteps}/${task.steps.length}` : '+ steps'}
           </div>
+          {onDelete && (
+            <span
+              onClick={(e) => {
+                e.stopPropagation()
+                onDelete()
+              }}
+              title="Delete task"
+              style={{
+                fontSize: 15,
+                color: 'rgba(232,234,240,0.3)',
+                cursor: 'pointer',
+                lineHeight: 1,
+              }}
+            >
+              ×
+            </span>
+          )}
         </div>
       </div>
 
