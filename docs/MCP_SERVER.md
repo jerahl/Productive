@@ -23,11 +23,17 @@ Design rules for the surface:
 # Claude Code
 claude mcp add --transport http beacon http://localhost:3000/mcp
 
-# Claude Desktop (stdio bridge)
-{ "mcpServers": { "beacon": { "command": "npx", "args": ["-y", "beacon-mcp"] } } }
+# Claude Desktop (stdio bridge) — see README "Connecting Claude" for the full
+# config; the short form (macOS/Linux) is:
+{ "mcpServers": { "beacon": { "command": "pnpm",
+    "args": ["--silent", "--dir", "/path/to/Productive",
+             "--filter", "@beacon/server", "mcp:stdio"] } } }
 ```
 
-`beacon-mcp` (stdio) starts the Beacon server if it isn't running, then proxies.
+The stdio bridge (`mcp:stdio`) runs against the same SQLite database as the web
+server. `--silent` is required so pnpm's run banner doesn't corrupt the stdio
+JSON-RPC stream; on Windows wrap the command as
+`"command": "cmd", "args": ["/c", "pnpm", ...]`.
 
 ## Tools
 

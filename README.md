@@ -44,10 +44,33 @@ With the server running (`pnpm --filter @beacon/server dev`):
 claude mcp add --transport http beacon http://localhost:3000/mcp
 ```
 
-For a stdio client (e.g. Claude Desktop), run `pnpm --filter @beacon/server mcp:stdio`,
-or point the client at that command. The stdio bridge shares the same SQLite
-database; use the HTTP transport when you want changes to appear live in an open
-browser. The full tool/resource/prompt catalog is in `docs/MCP_SERVER.md`.
+For a stdio client (e.g. Claude Desktop), point the client at
+`pnpm --silent --filter @beacon/server mcp:stdio`. The `--silent` flag is
+required: without it pnpm prints its run banner (`> @beacon/server ...`) to
+stdout, which is the MCP JSON-RPC channel, and the client logs JSON parse
+errors on every launch. A working `claude_desktop_config.json` entry (Windows —
+use `cmd` because pnpm is a `.cmd` shim; replace the `--dir` value with the
+real absolute path to this repo):
+
+```json
+{
+  "mcpServers": {
+    "beacon": {
+      "command": "cmd",
+      "args": [
+        "/c", "pnpm", "--silent",
+        "--dir", "C:\\path\\to\\Productive",
+        "--filter", "@beacon/server", "mcp:stdio"
+      ]
+    }
+  }
+}
+```
+
+On macOS/Linux, drop `cmd` / `/c` and set `"command": "pnpm"` with the same
+remaining args. The stdio bridge shares the same SQLite database; use the HTTP
+transport when you want changes to appear live in an open browser. The full
+tool/resource/prompt catalog is in `docs/MCP_SERVER.md`.
 
 ## Repository layout
 
