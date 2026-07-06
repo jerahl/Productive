@@ -1,0 +1,26 @@
+{
+  "name": "beacon",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Beacon — ADHD Work OS. pnpm monorepo (web + server + shared core + MCP).",
+  "type": "module",
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=10"
+  },
+  "packageManager": "pnpm@10.33.0",
+  "scripts": {
+    "typecheck": "pnpm -r run typecheck",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "db:generate": "pnpm --filter @beacon/server run db:generate",
+    "db:migrate": "pnpm --filter @beacon/server run db:migrate",
+    "db:seed": "pnpm --filter @beacon/server run db:seed",
+    "db:reset": "pnpm --filter @beacon/server run db:reset"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "typescript": "^5.7.3"
+  }
+}

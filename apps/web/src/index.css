@@ -1,0 +1,144 @@
+@import "tailwindcss";
+
+/* Beacon visual language (docs/PLAN.md §3) — dark theme only in v1. */
+:root {
+  --bg: #0f1116;
+  --surface: #1a1e27;
+  --side: #14171e;
+  --text: #e8eaf0;
+  --muted: rgba(232, 234, 240, 0.5);
+  --accent: #7c8cff;
+  --success: #5ec98a;
+  --warning: #e0a05a;
+  --danger: #e07a8a;
+  --purple: #c98ad6;
+  --hairline: rgba(255, 255, 255, 0.07);
+}
+
+* {
+  box-sizing: border-box;
+}
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+}
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Hanken Grotesk", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+input::placeholder {
+  color: rgba(232, 234, 240, 0.35);
+}
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.09);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+@keyframes fadeup {
+  from {
+    opacity: 0;
+    transform: translateY(7px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.view {
+  animation: fadeup 0.28s ease;
+}
+
+/* Rendered markdown in the Docs editor preview (Tailwind's reset strips these). */
+.doc-preview h1 {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 4px 0 12px;
+}
+.doc-preview h2 {
+  font-size: 17px;
+  font-weight: 600;
+  margin: 18px 0 8px;
+}
+.doc-preview h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 14px 0 6px;
+  color: rgba(232, 234, 240, 0.8);
+}
+.doc-preview p {
+  margin: 0 0 10px;
+}
+.doc-preview ul {
+  margin: 0 0 10px;
+  padding-left: 22px;
+  list-style: disc;
+}
+.doc-preview li {
+  margin: 3px 0;
+}
+.doc-preview code {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.88em;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 1px 5px;
+  border-radius: 5px;
+}
+.doc-preview strong {
+  font-weight: 700;
+}
+
+/* Responsive: below ~860px the sidebar becomes a horizontal scrolling bar. */
+@media (max-width: 860px) {
+  .shell {
+    flex-direction: column !important;
+  }
+  .sidebar {
+    width: auto !important;
+    height: auto !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    overflow-x: auto !important;
+    border-right: none !important;
+    border-bottom: 1px solid var(--hairline) !important;
+    padding: 10px 12px !important;
+    gap: 6px !important;
+  }
+  .side-brand {
+    padding: 4px 8px 4px 4px !important;
+    margin-right: 4px !important;
+  }
+  .side-foot {
+    display: none !important;
+  }
+  .nav-list {
+    flex-direction: row !important;
+    gap: 6px !important;
+    overflow: visible !important;
+  }
+  .nav-item {
+    white-space: nowrap !important;
+  }
+  .topbar {
+    padding: 14px 16px !important;
+  }
+  .main-pad {
+    padding: 18px 16px 60px !important;
+  }
+  .capture-bar {
+    min-width: 0 !important;
+  }
+}

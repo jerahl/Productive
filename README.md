@@ -6,8 +6,81 @@ visible. Claude connects directly through a built-in MCP server and can triage t
 inbox, break tasks into tiny steps, start focus sessions, and run reviews while the
 UI updates live.
 
-**Status: design & planning.** No application code yet — this repo currently holds
-the product plan and the reference design.
+**Status: Phase 5 — feature-complete.** All ten views from the design are built,
+the focus overlay works, and a built-in MCP server (44 tools, 6 resources, 4
+prompts) lets Claude operate the whole app with changes streaming live to the
+browser over SSE:
+
+- **Tasks** — inbox triage, Today/Upcoming/Someday groups, steps, due/priority
+  cycling, drag-to-reorder.
+- **Overview** — "right now — just one thing" (low energy → suggests the shortest
+  task), today progress, momentum/streak, next meeting, brain-dump inbox.
+- **Focus session** — full-screen overlay with a countdown, pause/resume, +5 min,
+  and Done; sessions are logged (planned vs. actual); a daily rollover promotes
+  `tomorrow` → `today` and streaks recompute from completions.
+- **Projects** — a card grid; open one for its detail: **milestones** (checkable,
+  with per-milestone progress) and the project's **tasks** grouped under them.
+  Those are real tasks — they show in the Tasks tab too, where each carries a
+  project pill that jumps back to the project.
+- **Goals** — create, edit name/detail inline, drag a progress slider (or "sync
+  from tasks"), and link real tasks that feed the goal.
+- **Meetings · Routines · Notes · Docs** — an agenda with done/next/later,
+  daily-resetting routine checks, a sticky-note masonry, and a docs list with a
+  markdown editor.
+- **Canvas** — a spatial board with draggable, connectable cards; delete a card
+  or edge; promote a card into a task or note.
+- **Vision board** — image tiles with drag-to-upload and editable captions.
+- **MCP server** at `/mcp` (Streamable HTTP, same process): 44 tools, resources,
+  and prompts, all delegating to the shared service layer. Changes stream to the
+  browser over SSE (`/api/events`), so when Claude triages the inbox — or moves a
+  canvas card — the open UI updates within a second.
+
+## Connecting Claude
+
+With the server running (`pnpm --filter @beacon/server dev`):
+
+```bash
+# Claude Code — Streamable HTTP (recommended; drives live UI updates)
+claude mcp add --transport http beacon http://localhost:3000/mcp
+```
+
+For a stdio client (e.g. Claude Desktop), run `pnpm --filter @beacon/server mcp:stdio`,
+or point the client at that command. The stdio bridge shares the same SQLite
+database; use the HTTP transport when you want changes to appear live in an open
+browser. The full tool/resource/prompt catalog is in `docs/MCP_SERVER.md`.
+
+## Repository layout
+
+```
+apps/
+  web/        React 19 + Vite + Tailwind v4 + TanStack Query — shell + Tasks view
+  server/     Node + Hono REST API over the core service layer; SQLite/Drizzle, seed
+packages/
+  core/       enums, zod schemas, Drizzle tables, inferred types, service layer
+  mcp/        MCP tools/resources/prompts — implemented in Phase 3 (placeholder)
+```
+
+## Getting started
+
+Requires Node ≥ 22 and pnpm ≥ 10.
+
+```bash
+pnpm install          # install workspace deps (builds better-sqlite3 natively)
+pnpm db:reset         # drop the db file, re-migrate, and re-seed the demo data
+
+# run the app (two terminals, or background the server):
+pnpm --filter @beacon/server dev   # REST API on http://localhost:3000 (seeds if empty)
+pnpm --filter @beacon/web dev      # web client on http://localhost:5173 (proxies /api)
+
+pnpm typecheck        # tsc --noEmit across all packages
+pnpm lint             # biome check
+```
+
+Other DB tasks: `pnpm db:generate` (regenerate migration SQL from the schema),
+`pnpm db:migrate` (apply migrations), `pnpm db:seed` (migrate + load demo data).
+
+The database lives at `~/.beacon/beacon.db` by default; set `BEACON_DB` to
+override (e.g. `BEACON_DB=./dev.db pnpm db:reset`).
 
 ## Documents
 

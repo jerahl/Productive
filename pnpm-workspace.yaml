@@ -1,0 +1,10 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+# Allow these packages to run their install/build scripts (pnpm blocks them by
+# default). Lives here — not in package.json — for pnpm 10.16+ / 11.
+onlyBuiltDependencies:
+  - "@biomejs/biome"
+  - better-sqlite3
+  - esbuild
