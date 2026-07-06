@@ -72,9 +72,9 @@ claude mcp add --transport http beacon http://localhost:3000/mcp
 
 | Tool | Input | Behavior |
 |---|---|---|
-| `list_projects` / `create_project` / `update_project` | usual fields | Percent is computed from linked tasks — not settable. |
-| `list_goals` / `create_goal` / `update_goal` | `pct` is manual | Goals are directional, app doesn't compute them. |
-| `list_routines` / `check_routine_item` / `edit_routine` | `period: morning\|evening` | Check state is per-day; `edit_routine` changes the template. |
+| `list_projects` / `create_project` / `update_project` / `delete_project` | usual fields | Percent is computed from linked tasks — not settable. `delete_project` keeps the project's tasks (link cleared); milestones cascade. *(delete is destructive)* |
+| `list_goals` / `create_goal` / `update_goal` / `delete_goal` | `pct` is manual | Goals are directional, app doesn't compute them. |
+| `list_routines` / `create_routine` / `check_routine_item` / `delete_routine` | `period: morning\|evening`, `text` | Check state is per-day; `create_routine` / `delete_routine` change the template. *(delete is destructive)* |
 | `list_meetings` / `create_meeting` / `delete_meeting` | `title`, `starts_at`, `who` | Manual agenda; Claude can transcribe from whatever the user pastes. |
 
 ### Notes, docs, canvas, vision

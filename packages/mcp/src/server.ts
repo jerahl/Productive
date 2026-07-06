@@ -4,6 +4,7 @@ import {
   ENERGY_LEVELS,
   PRIORITIES,
   PROMOTE_TARGETS,
+  ROUTINE_PERIODS,
   type TaskWithDetail,
 } from '@beacon/core'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
@@ -420,6 +421,19 @@ function registerSurround(server: McpServer, svc: BeaconService): void {
       )
     },
   )
+  server.registerTool(
+    'delete_project',
+    {
+      title: 'Delete project',
+      description: 'Delete a project; its milestones go too, but its tasks stay (link cleared).',
+      inputSchema: { projectId: z.string() },
+      annotations: { destructiveHint: true },
+    },
+    async ({ projectId }) => {
+      svc.deleteProject(projectId)
+      return ok('Deleted project.')
+    },
+  )
 
   // Milestones
   server.registerTool(
@@ -541,6 +555,19 @@ function registerSurround(server: McpServer, svc: BeaconService): void {
     async () => ok('routines', { routines: svc.listRoutines() }),
   )
   server.registerTool(
+    'create_routine',
+    {
+      title: 'Create routine step',
+      description: 'Add a step to the morning or evening routine template.',
+      inputSchema: {
+        period: z.enum(ROUTINE_PERIODS),
+        text: z.string().trim().min(1).max(200),
+      },
+    },
+    async ({ period, text }) =>
+      ok(`Added ${period} routine step.`, { routines: svc.createRoutine({ period, text }) }),
+  )
+  server.registerTool(
     'check_routine_item',
     {
       title: 'Check routine item',
@@ -549,6 +576,17 @@ function registerSurround(server: McpServer, svc: BeaconService): void {
     },
     async ({ routineId }) =>
       ok('Toggled routine item.', { routines: svc.toggleRoutineCheck(routineId) }),
+  )
+  server.registerTool(
+    'delete_routine',
+    {
+      title: 'Delete routine step',
+      description: 'Remove a routine step from its period; its check history goes too.',
+      inputSchema: { routineId: z.string() },
+      annotations: { destructiveHint: true },
+    },
+    async ({ routineId }) =>
+      ok('Deleted routine step.', { routines: svc.deleteRoutine(routineId) }),
   )
 
   // Meetings
