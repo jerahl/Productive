@@ -103,9 +103,6 @@ at runtime is a regular dependency, so a production install — `--prod` or with
 Wraps the server entrypoint (`src/index.ts`) — no build step required.
 
 ```bat
-rem Point the database at a stable, writable location — a service runs as
-rem LocalSystem, whose home directory is under C:\Windows.
-set BEACON_DB=C:\ProgramData\Beacon\beacon.db
 set PORT=3000
 
 pnpm --filter @beacon/server run service:install
@@ -113,7 +110,12 @@ pnpm --filter @beacon/server run service:install
 
 This registers a service named **Beacon** and starts it. `PORT`, `BEACON_DB`,
 and `NODE_ENV` (default `production`) are captured from the install-time
-environment.
+environment. The database defaults to `%ProgramData%\Beacon\beacon.db` — the
+installer always bakes an explicit `BEACON_DB` into the service so it never
+falls back to LocalSystem's home directory (which is buried under
+`C:\Windows\system32`). Set `BEACON_DB` before installing only to use a
+different location. Note the `set X=Y` syntax above is for **cmd.exe**; in
+PowerShell use `$env:PORT = "3000"`.
 
 ### Web service (`Beacon Web`)
 

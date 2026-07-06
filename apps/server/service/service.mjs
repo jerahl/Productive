@@ -20,6 +20,21 @@ const here = dirname(fileURLToPath(import.meta.url))
 export const SERVICE_NAME = 'Beacon'
 
 /**
+ * Where the service's database lives: BEACON_DB from the install-time shell if
+ * set (note: `set X=Y` is cmd.exe syntax; in PowerShell use `$env:X = "Y"`),
+ * otherwise %ProgramData%\Beacon\beacon.db. A service runs as LocalSystem,
+ * whose home directory is under C:\Windows — defaulting there would bury the
+ * database in C:\Windows\system32\config\systemprofile\.beacon, invisible to
+ * every other process that uses the normal default.
+ */
+export function resolvedDbPath() {
+  const configured = process.env.BEACON_DB?.trim()
+  if (configured) return configured
+  const programData = process.env.ProgramData || 'C:\\ProgramData'
+  return join(programData, 'Beacon', 'beacon.db')
+}
+
+/**
  * Environment variables forwarded from the install-time shell into the service.
  * Set these before running `service:install` to configure the deployment, e.g.
  *
@@ -27,13 +42,12 @@ export const SERVICE_NAME = 'Beacon'
  *   set PORT=3000
  *   pnpm --filter @beacon/server run service:install
  *
- * A service runs as LocalSystem by default, whose home directory is under
- * C:\Windows — so pointing BEACON_DB at a stable, writable location such as
- * C:\ProgramData\Beacon is strongly recommended.
+ * BEACON_DB always gets an explicit value (see resolvedDbPath) so the service
+ * never falls back to LocalSystem's home directory.
  */
 function serviceEnv() {
-  const forwarded = ['PORT', 'BEACON_DB', 'NODE_ENV']
-  const env = []
+  const forwarded = ['PORT', 'NODE_ENV']
+  const env = [{ name: 'BEACON_DB', value: resolvedDbPath() }]
   for (const name of forwarded) {
     const value = process.env[name]
     if (value != null && value !== '') env.push({ name, value })

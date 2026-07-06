@@ -9,12 +9,12 @@
  * PORT). After install, manage it from services.msc or with `net start Beacon`
  * / `net stop Beacon`.
  */
-import { SERVICE_NAME, createBeaconService } from './service.mjs'
+import { SERVICE_NAME, createBeaconService, resolvedDbPath } from './service.mjs'
 
 const svc = createBeaconService()
 
 svc.on('install', () => {
-  console.log(`✓ "${SERVICE_NAME}" service installed. Starting…`)
+  console.log(`✓ "${SERVICE_NAME}" service installed (db: ${resolvedDbPath()}). Starting…`)
   svc.start()
 })
 
